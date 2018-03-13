@@ -179,38 +179,6 @@ module sra(so, si, sv);
 	mux2_1 m3F (.d1(ST3[7]), .d0(ST3[15]), .b(so[0]), .s(sv[3]));
 endmodule
 
-module sra_tb;
-	reg [15:0] value;
-	reg [3:0] shift;
-	reg [1:0] mode;
-	reg [24:0] string;
-	wire [15:0] result;
-
-	Shifter TEST (result, value, shift, mode);
-
-	initial begin
-		value = 16'b0;
-		shift = 4'b0;
-		mode = 0;
-		repeat(100) begin
-			#20 value = $random;
-			#0 shift = $random;
-			#0 mode = $random;
-		end
-		#10;
-	end
-	
-	always @(*) begin
-		if(mode == 0)
-			string = "SRA";
-		else
-			string = "SLL";
-	end
-
-	initial $monitor("Mode:%s In:%b Shift:%b Out:%b", string, value, shift, result);
-
-endmodule
-
 module ror(ro, ri, rv);
 	input [15:0] ri;
 	input [3:0] rv;
@@ -285,27 +253,6 @@ module ror(ro, ri, rv);
 	mux2_1 m3D (.d1(ST3[5]), .d0(ST3[13]), .b(ro[13]), .s(rv[3]));
 	mux2_1 m3E (.d1(ST3[6]), .d0(ST3[14]), .b(ro[14]), .s(rv[3]));
 	mux2_1 m3F (.d1(ST3[7]), .d0(ST3[15]), .b(ro[15]), .s(rv[3]));
-endmodule
-
-module ror_tb;
-	reg [15:0] value;
-	reg [3:0] shift;
-	wire [15:0] result;
-	
-	ror TEST (.ro(result), .ri(value), .rv(shift));
-
-	initial begin
-		value = 16'b0;
-		shift = 4'b0;
-		repeat(100) begin
-			#20 value = $random;
-			#0 shift = $random;
-
-		end
-		#10;
-	end
-
-	initial $monitor("In:%b Shift:%b Out:%b", value, shift, result);
 endmodule
 
 module Shifter(Shift_Out, Shift_In, Shift_Val, Mode);
