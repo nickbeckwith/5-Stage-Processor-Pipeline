@@ -1,8 +1,8 @@
-module add_4b(a, b, cin, s, pp, gg);
+module add_4b(a, b, cin, s, pp, gg, cout);
 	input [3:0] a, b;
 	input cin;
 	output [3:0] s;
-	output pp, gg;
+	output pp, gg, cout;
 	wire[3:0] p, g, c;
 
 	add_1b A0(a[0], b[0], cin, s[0], p[0], g[0]);
@@ -11,4 +11,5 @@ module add_4b(a, b, cin, s, pp, gg);
 	add_1b A3(a[3], b[3], c[2], s[3], p[3], g[3]);
 
 	cla_unit CLA (p, g, cin, pp, gg, c);
+	assign cout = c[3];
 endmodule
