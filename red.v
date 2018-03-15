@@ -22,5 +22,5 @@ module red(InputA, InputB, Output);
 	csa_1b D2 (c[6], sd[0], sc[0], Output[4], se[1]);
 	csa_1b D3 (sd[1], sc[1], se[1], Output[5], Output[6]);
 
-	assign Output[15:7] = {8{Output[6]}};
+	assign Output[15:7] = {9{Output[6]}};
 endmodule
