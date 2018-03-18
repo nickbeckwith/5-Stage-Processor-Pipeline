@@ -30,8 +30,7 @@ module alu_compute(InputA, InputB, Opcode, OutputA, OutputB, Flag);
 	wire[15:0] MA_out;
 	mux8_1_16b MA (.d0(addsub_o), .d1(addsub_o), .d2(red_o), .d3(xor_o), .d4(shift_o), .d5(shift_o), .d6(shift_o), .d7(paddsb_o), .b(MA_out), .s(Opcode[2:0]));
 	
-	wire [15:0] LLB, LHB, LXX_o;
-	assign LLB = (InputA & 16'b1111111100000000) | InputB;
+	wire [15:0] LLB, LHB, LXX_o; assign LLB = (InputA & 16'b1111111100000000) | InputB;
 	assign LHB = (InputA & 16'b0000000011111111) | (InputB << 8);
 	assign LXX_o = Opcode[0] ? LLB : LHB;
 
