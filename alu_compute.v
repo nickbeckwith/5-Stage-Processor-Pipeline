@@ -23,5 +23,9 @@ module alu_compute(InputA, InputB, Opcode, OutputA, OutputB);
 	wire [15:0] mem_addr;
 	add_16b MEMADD (.a(InputA), .b(InputB), .cin(1'b0), .s(lw_addr));
 
+	wire[15:0] MA_out;
+	mux8_1_16b MA (.d0(addsub_o), .d1(addsub_o), .d2(red_o), .d3(xor_o), .d4(shift_o), .d5(shift_o), .d6(shift_o), .d7(paddsb_o), .b(MA_out), .s(Opcode[2:0]));
 
+	assign OutputA = mem_addr;
+	assign OutputB = MA_out;
 endmodule
