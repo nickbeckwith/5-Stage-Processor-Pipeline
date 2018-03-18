@@ -43,7 +43,7 @@ module alu_compute(InputA, InputB, Opcode, OutputA, OutputB, Flag);
 	//0 = Z
 	assign Flag[0] = MA_out == 16'b0000000000000000 ? 1'b1 : 1'b0;
 	//1 = V
-	assign Flag[1] = addsub_f[1];
+	assign Flag[1] = addsub_f[1] & ~(Opcode[3] | Opcode[2] | Opcode[1]);
 	//2 = N 
-	assign Flag[2] = addsub_f[2];
+	assign Flag[2] = addsub_f[2] & ~(Opcode[3] | Opcode[2] | Opcode[1]);
 endmodule
