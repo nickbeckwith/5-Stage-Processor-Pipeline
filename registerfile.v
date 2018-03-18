@@ -151,7 +151,7 @@ module Register (input clk, input rst, input [15:0] D, input WriteReg, input Rea
 	BitCell BF (.clk(clk), .rst(rst), .D(D[15]), .WriteEnable(WriteReg), .ReadEnable1(ReadEnable1), .ReadEnable2(ReadEnable2), .Bitline1(Bitline1[15]), .Bitline2(Bitline2[15]));
 endmodule
 
-module RegisterFile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcReg2, input [3:0] DstReg, input WriteReg, input [15:0] DstData, inout [15:0] SrcData1, inout [15:0] SrcData2);
+module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcReg2, input [3:0] DstReg, input WriteReg, input [15:0] DstData, inout [15:0] SrcData1, inout [15:0] SrcData2);
 	wire [15:0] DEC1, DEC2, WDEC, OUT1, OUT2;
 
 	ReadDecoder_4_16 SRC1 (.RegId(SrcReg1), .Wordline(DEC1));
@@ -183,6 +183,6 @@ module RegisterFile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 	assign select1 = (SrcReg1[0] ^ DstReg[0]) | (SrcReg1[1] ^ DstReg[1]) | (SrcReg1[2] ^ DstReg[2]) | (SrcReg1[3] ^ DstReg[3]);
 	assign select2 = (SrcReg2[0] ^ DstReg[0]) | (SrcReg2[1] ^ DstReg[1]) | (SrcReg2[2] ^ DstReg[2]) | (SrcReg2[3] ^ DstReg[3]);
 
-	mux_2_1 DATA1 (.d0(DstData), .d1(OUT1), .s(select1), .b(SrcData1));
-	mux_2_1 DATA2 (.d0(DstData), .d1(OUT2), .s(select2), .b(SrcData2));
+	mux2_1_16b DATA1 (.d0(DstData), .d1(OUT1), .s(select1), .b(SrcData1));
+	mux2_1_16b DATA2 (.d0(DstData), .d1(OUT2), .s(select2), .b(SrcData2));
 endmodule
