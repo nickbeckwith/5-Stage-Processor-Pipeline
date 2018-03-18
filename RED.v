@@ -26,5 +26,5 @@ module RED(input [15:0] A, input [15:0] B, output [15:0] R);
 	assign S6_ext = {S6[5],S6};
 
 	CLA_7bit CLA70(.A(S5_ext),.B(S6_ext),.S(Sum));
-	assign R = {Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum};
+	assign R = {Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum};
 endmodule
