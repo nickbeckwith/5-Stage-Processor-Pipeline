@@ -17,7 +17,8 @@ module alu_compute(InputA, InputB, Opcode, OutputA, OutputB);
 	wire shift_f;
 	shifter SHIFT (shift_o, shift_f, InputA, InputB[3:0], Opcode[1:0]);
 
-	//PADDSB
+	wire [15:0] paddsb_o;
+	paddsb PADDSB (InputA, InputB, paddsb_o);
 
 	wire [15:0] mem_addr;
 	add_16b MEMADD (.a(InputA), .b(InputB), .cin(1'b0), .s(lw_addr));
