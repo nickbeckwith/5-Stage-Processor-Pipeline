@@ -27,17 +27,10 @@ module alu_compute(InputA, InputB, Opcode, OutputA, OutputB, Flag);
 	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(mem_addr));
 	assign OutputA = mem_addr;
 
-	wire[15:0] MA_out;
+	wire [15:0] MA_out;
 	mux8_1_16b MA (.d0(addsub_o), .d1(addsub_o), .d2(red_o), .d3(xor_o), .d4(shift_o), .d5(shift_o), .d6(shift_o), .d7(paddsb_o), .b(MA_out), .s(Opcode[2:0]));
 	
-	wire [15:0] LLB, LHB, LXX_o; assign LLB = (InputA & 16'b1111111100000000) | InputB;
-	assign LHB = (InputA & 16'b0000000011111111) | (InputB << 8);
-	assign LXX_o = Opcode[0] ? LLB : LHB;
-
-	wire [15:0] MB_out;
-	mux2_1_16b MB (.d0(MA_out), .d1(LXX_o), .b(MB_out), .s(Opcode[3]));
-	
-	assign OutputB = MB_out;
+	assign OutputB = MA_out;
 
 	//0 = Z
 	assign Flag[0] = MA_out == 16'b0000000000000000 ? 1'b1 : 1'b0;
