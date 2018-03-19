@@ -1,4 +1,6 @@
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
+	wire rst;
+	assign rst = ~(rst_n);
  	wire[15:0] instr_out, instr_addr; 
 	wire en, wr, nHalt; 
 	wire[15:0] pc_curr;
@@ -12,17 +14,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [2:0] FLAG_o;
 	wire [15:0] imm_sign_ext, lb_hb_off_ext;
 
-	assign nHalt = ~(opcode[3] | opcode[2] | opcode[1] | opcode[0]);
-	assign hlt = ~(nHalt);
-
-	PC_register PC (.clk(clk), .rst(rst_n), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr));
+	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr));
 
 	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 
-	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(instr_addr), .enable(nHalt), .wr(1'b0), .clk(clk), .rst(rst_n));
-	assign hlt = ~(nHalt);
+	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(instr_addr), .enable(1'b1), .wr(1'b1), .clk(clk), .rst(rst));
 
 	assign opcode = instr_out[15:12];
+	assign hlt = &opcode;
 
 	assign rs_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
 	mux2_1_4b rs_mux (.d0(instr_out[7:4]), .d1(instr_out[11:8]), .b(rs_mux_o), .s(rs_mux_s));
@@ -41,7 +40,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire regWrite;
 	assign regWrite = ~(opcode[3]) | ~(opcode[2]) | (opcode[1] & ~(opcode[0]));
 
-	registerfile rf(.clk(clk), .rst(rst_n), .SrcReg1(rs), .SrcReg2(rt), .DstReg(rd), .WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1), .SrcData2(reg_read_val_2));
+	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt), .DstReg(rd), .WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1), .SrcData2(reg_read_val_2));
 
 	wire [15:0] LLB, LHB, LXX_o;
 	assign LLB = (reg_read_val_1 & 16'b1111111100000000) | llb_lhb_offset;
@@ -57,13 +56,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
 	
 
-	FlagRegister FLAG (.clk(clk), .rst(rst_n), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o));
+	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o));
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
 	assign mem_en = opcode[3] & ~(opcode[2] | opcode[1]);
 	assign mem_wr = opcode[3] & ~(opcode[2] | opcode[1]) & opcode[0];
-	dmemory Data_Mem (.data_out(mem_out), .data_in(alu_data), .addr(mem_addr), .enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst_n));
+	dmemory Data_Mem (.data_out(mem_out), .data_in(alu_data), .addr(mem_addr), .enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 
 	wire [15:0] rw_muxA_o;
 	wire rw_muxA_s;
