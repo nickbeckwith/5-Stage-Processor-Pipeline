@@ -2,7 +2,11 @@ module CPU(input clk, input rst_n, output hlt, output [15:0] pc);
 	wire[15:0] instr_out, instr_addr; 
 	wire en, wr, nHalt; 
 
-//	Register PC (.clk(clk), .rst(rst_n), .D(), .WriteReg(), .ReadEnable1(), .ReadEnable2(), .BitLine1(), .BitLine2());
+	wire[15:0] pc_curr;
+	Register PC (.clk(clk), .rst(rst_n), .D(), .WriteReg(), .ReadEnable1(), .ReadEnable2(1'b0), .BitLine1(pc_curr));
+
+	wire[15:0] pc_next;
+	PC_Control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(), .PC_out(pc_next));
 
 	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(instr_addr), .enable(nHalt), .wr(1'b0), .clk(clk), .rst(rst_n));
 	assign hlt = ~(nHalt);
@@ -12,7 +16,7 @@ module CPU(input clk, input rst_n, output hlt, output [15:0] pc);
 	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
 	wire [7:0] llb_lhb_offset;
 	wire [8:0] br_offset;
-	wire [15:0] imm_sign_ext, br_off_ext, lb_hb_off_ext;
+	wire [15:0] imm_sign_ext, lb_hb_off_ext;
 
 	assign opcode = instr_out[15:12];
 
@@ -28,7 +32,6 @@ module CPU(input clk, input rst_n, output hlt, output [15:0] pc);
 	assign lb_hb_off_ext = {{8{llb_lhb_offset[7]}}, llb_lhb_offset};
 	assign ccode = instr_out[11:9];
 	assign br_offset = instr_out[8:0];
-	assign br_off_ext = {{7{br_offset[8]}}, br_offset};
 
 	wire [15:0] reg_read_val_1, reg_read_val_2, dest_data;
 	wire regWrite;
