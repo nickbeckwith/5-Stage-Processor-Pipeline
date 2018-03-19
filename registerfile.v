@@ -1,12 +1,12 @@
 module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcReg2, input [3:0] DstReg, input WriteReg, input [15:0] DstData, inout [15:0] SrcData1, inout [15:0] SrcData2);
-	wire [15:0] DEC1, DEC2, WDEC, OUT1, OUT2;
-
+	wire [15:0] DEC1, DEC2, WDEC, OUT1, OUT2,zeros;
+	assign zeros = 16'b0;
 	ReadDecoder_4_16 SRC1 (.RegId(SrcReg1), .Wordline(DEC1));
 	ReadDecoder_4_16 SRC2 (.RegId(SrcReg2), .Wordline(DEC2));
 
 	WriteDecoder_4_16 WR (.RegId(DstReg), .WriteReg(WriteReg), .Wordline(WDEC));
 
-	Register R0 (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[0]), .ReadEnable1(DEC1[0]), .ReadEnable2(DEC2[0]), .Bitline1(OUT1), .Bitline2(OUT2));
+	Register R0 (.clk(clk), .rst(rst), .D(zeros), .WriteReg(WDEC[0]), .ReadEnable1(DEC1[0]), .ReadEnable2(DEC2[0]), .Bitline1(OUT1), .Bitline2(OUT2));
 	Register R1 (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[1]), .ReadEnable1(DEC1[1]), .ReadEnable2(DEC2[1]), .Bitline1(OUT1), .Bitline2(OUT2));
 	Register R2 (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[2]), .ReadEnable1(DEC1[2]), .ReadEnable2(DEC2[2]), .Bitline1(OUT1), .Bitline2(OUT2));
 	Register R3 (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[3]), .ReadEnable1(DEC1[3]), .ReadEnable2(DEC2[3]), .Bitline1(OUT1), .Bitline2(OUT2));
