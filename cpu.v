@@ -1,4 +1,4 @@
-module CPU(input clk, input rst_n, output hlt, output [15:0] pc);
+module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
  	wire[15:0] instr_out, instr_addr; 
 	wire en, wr, nHalt; 
 	wire[15:0] pc_curr;
