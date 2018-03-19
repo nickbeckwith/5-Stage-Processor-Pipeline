@@ -23,7 +23,7 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 	Register RE (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[14]), .ReadEnable1(DEC1[14]), .ReadEnable2(DEC2[14]), .Bitline1(OUT1), .Bitline2(OUT2));
 	Register RF (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[15]), .ReadEnable1(DEC1[15]), .ReadEnable2(DEC2[15]), .Bitline1(OUT1), .Bitline2(OUT2));
 
-	//Implement Internal Bypassing Somehow
+/*	//Implement Internal Bypassing Somehow
 	wire select1, select2;
 
 	//0 if equal, 1 else
@@ -32,4 +32,7 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 
 	mux2_1_16b DATA1 (.d0(DstData), .d1(OUT1), .s(select1), .b(SrcData1));
 	mux2_1_16b DATA2 (.d0(DstData), .d1(OUT2), .s(select2), .b(SrcData2));
+*/
+	assign SrcData1 = OUT1;
+	assign SrcData2 = OUT2;
 endmodule
