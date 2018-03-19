@@ -1,8 +1,7 @@
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire rst;
 	assign rst = ~(rst_n);
- 	wire[15:0] instr_out, instr_addr; 
-	wire en, wr, nHalt; 
+ 	wire[15:0] instr_out;
 	wire[15:0] pc_curr;
 	wire[15:0] pc_next;
 	wire rs_mux_s;
@@ -19,7 +18,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 
 	assign pc_out = pc_next;
-	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(instr_addr), .enable(1'b1), .wr(1'b1), .clk(clk), .rst(rst));
+	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr), .enable(1'b1), .wr(1'b1), .clk(clk), .rst(rst));
 
 	assign opcode = instr_out[15:12];
 	assign hlt = &opcode;
@@ -55,7 +54,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	mux2_1_16b alu_mux (.d0(reg_read_val_2), .d1(imm_sign_ext), .b(alu_mux_o), .s(alu_mux_s));
 
 	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
-	
+
 
 	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o));
 
