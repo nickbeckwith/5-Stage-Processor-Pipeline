@@ -1,4 +1,4 @@
-module PCRegister( input clk,  input rst, input [15:0] D, input WriteReg, input ReadEnable1, input ReadEnable2, output [15:0] Bitline1, output [15:0] Bitline2);
+module PC_register( input clk,  input rst, input [15:0] D, input WriteReg, input ReadEnable1, input ReadEnable2, output [15:0] Bitline1, output [15:0] Bitline2);
 	
 	BitCell cell_0(.clk(clk),.rst(rst),.D(D[0]), .WriteEnable(WriteReg),.ReadEnable1(ReadEnable1),.ReadEnable2(ReadEnable2),.Bitline1(Bitline1[0]),.Bitline2(Bitline2[0])); 
 	BitCell cell_1(.clk(clk),.rst(rst),.D(D[1]), .WriteEnable(WriteReg),.ReadEnable1(ReadEnable1),.ReadEnable2(ReadEnable2),.Bitline1(Bitline1[1]),.Bitline2(Bitline2[1])); 
