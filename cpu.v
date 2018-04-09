@@ -12,9 +12,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] reg_read_val_1, reg_read_val_2, dest_data;
 	wire [2:0] FLAG_o;
 	wire [15:0] imm_sign_ext, lb_hb_off_ext;
-	
-	/*Begin IF*/
-	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr));
+
+	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr), .Bitline2());
 
 	assign pc_out = pc_curr;
 	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr), .enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
@@ -66,7 +65,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
 
 
-	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o));
+	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o), .Bitline2());
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
