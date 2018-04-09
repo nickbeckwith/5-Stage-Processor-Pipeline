@@ -12,14 +12,17 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] reg_read_val_1, reg_read_val_2, dest_data;
 	wire [2:0] FLAG_o;
 	wire [15:0] imm_sign_ext, lb_hb_off_ext;
-
+	
+	/*Begin IF*/
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr));
-
-	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 
 	assign pc_out = pc_curr;
 	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr), .enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
+	/*END IF*/
 
+	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
+	
+	/*Begin ID*/
 	assign opcode = instr_out[15:12];
 	assign hlt = &opcode;
 
@@ -47,15 +50,16 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign LHB = (reg_read_val_1 & 16'b0000000011111111) | (llb_lhb_offset << 8);
 	assign LXX_o = opcode[0] ? LLB : LHB;
 
-	wire alu_mux_s;
-	wire [15:0] alu_mux_o, mem_addr, alu_data;
-	wire [2:0] alu_flag;
-	assign alu_mux_s = opcode[3] | (opcode[2] & ~(opcode[1])) | (opcode[2] & opcode[1] & ~(opcode[0]));
-
 	wire imm_mux_s;
 	assign imm_mux_s = rs_mux_s;
 	wire [15:0] imm_mux_o;
 	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
+	/*End ID*/
+
+	wire alu_mux_s;
+	wire [15:0] alu_mux_o, mem_addr, alu_data;
+	wire [2:0] alu_flag;
+	assign alu_mux_s = opcode[3] | (opcode[2] & ~(opcode[1])) | (opcode[2] & opcode[1] & ~(opcode[0]));
 
 	mux2_1_16b alu_mux (.d0(reg_read_val_2), .d1(imm_mux_o), .b(alu_mux_o), .s(alu_mux_s));
 
