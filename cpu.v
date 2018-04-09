@@ -17,11 +17,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	assign pc_out = pc_curr;
 	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr), .enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
-	/*END IF*/
 
 	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 	
-	/*Begin ID*/
 	assign opcode = instr_out[15:12];
 	assign hlt = &opcode;
 
@@ -30,7 +28,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	assign rd = instr_out[11:8];
 	assign rs = rs_mux_o;
-	assign rt = instr_out[3:0];
+	assign rt = opcode[3] ? instr_out[11:8] : instr_out[3:0];
 	assign imm = instr_out[3:0];
 	assign imm_sign_ext = {{12{instr_out[3]}}, imm};
 	assign llb_lhb_offset = instr_out[7:0];
@@ -53,16 +51,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign imm_mux_s = rs_mux_s;
 	wire [15:0] imm_mux_o;
 	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
-	/*End ID*/
 
-	wire alu_mux_s;
-	wire [15:0] alu_mux_o, mem_addr, alu_data;
+	wire [15:0] mem_addr, alu_data;
 	wire [2:0] alu_flag;
-	assign alu_mux_s = opcode[3] | (opcode[2] & ~(opcode[1])) | (opcode[2] & opcode[1] & ~(opcode[0]));
-
-	mux2_1_16b alu_mux (.d0(reg_read_val_2), .d1(imm_mux_o), .b(alu_mux_o), .s(alu_mux_s));
-
-	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
+	alu_compute ALU(.InputA(reg_read_val_1), .InputB(reg_read_val_2), .Offset(imm_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
 
 
 	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o), .Bitline2());
