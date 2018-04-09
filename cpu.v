@@ -51,7 +51,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] alu_mux_o, mem_addr, alu_data;
 	wire [2:0] alu_flag;
 	assign alu_mux_s = opcode[3] | (opcode[2] & ~(opcode[1])) | (opcode[2] & opcode[1] & ~(opcode[0]));
-	mux2_1_16b alu_mux (.d0(reg_read_val_2), .d1(imm_sign_ext), .b(alu_mux_o), .s(alu_mux_s));
+
+	wire imm_mux_s;
+	assign imm_mux_s = rs_mux_s;
+	wire [15:0] imm_mux_o;
+	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
+
+	mux2_1_16b alu_mux (.d0(reg_read_val_2), .d1(imm_mux_o), .b(alu_mux_o), .s(alu_mux_s));
 
 	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
 
