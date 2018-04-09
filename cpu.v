@@ -13,7 +13,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [2:0] FLAG_o;
 	wire [15:0] imm_sign_ext, lb_hb_off_ext;
 
-	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr));
+	PC_register PC (.clk(clk), .rst(rst), .D(pc_next), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr), .Bitline2());
 
 	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 
@@ -62,7 +62,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	alu_compute ALU(.InputA(reg_read_val_1), .InputB(alu_mux_o), .Opcode(opcode), .OutputA(mem_addr), .OutputB(alu_data), .Flag(alu_flag));
 
 
-	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o));
+	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(FLAG_o), .Bitline2());
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
