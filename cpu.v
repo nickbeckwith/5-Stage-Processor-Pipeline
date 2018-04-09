@@ -17,7 +17,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	PC_control PCC (.PC_in(pc_curr), .data(reg_read_val_1), .offset(br_offset), .op(opcode), .C(ccode), .F(FLAG_o), .PC_out(pc_next));
 
-	assign pc_out = pc_next;
+	assign pc_out = pc_curr;
 	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr), .enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
 
 	assign opcode = instr_out[15:12];
