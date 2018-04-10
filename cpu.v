@@ -4,7 +4,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
  	wire[15:0] instr_out;
 	wire[15:0] pc_curr;
 	wire[15:0] pc_next;
-	wire rs_mux_s;
+	wire rs_mux_s, exmem_br;
 	wire [2:0] ccode;
 	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
 	wire [7:0] llb_lhb_offset;
@@ -25,7 +25,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	
 	wire [15:0] ifid_pc, ifid_instr;
 
-	if_id IFID (.clk(clk), .rst(rst), .hzrd(/**/), .pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc), .instr_o(ifid_instr));
+	if_id IFID (.clk(clk), .rst(rst), .hzrd(/**/), .branch(exmem_br), .pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc), .instr_o(ifid_instr));
 
 	assign opcode = ifid_instr[15:12];
 	assign hlt = &opcode;
@@ -64,7 +64,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [3:0] idex_rs, idex_rt, idex_rd, idex_op;
 	wire [2:0] idex_ccode;
 	
-	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2), .pc_i(ifid_pc), .imm_i(imm_mux_o), .br_off_i(br_offset), .rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode), .hzrd(/**/), .clk(clk), .rst(rst), .reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc), .imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs), .rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op), .ccode_o(idex_ccode));
+	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2), .pc_i(ifid_pc), .imm_i(imm_mux_o), .br_off_i(br_offset), .rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode), .hzrd(/**/), .clk(clk), .rst(rst), .branch(exmem_br), .reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc), .imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs), .rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op), .ccode_o(idex_ccode));
 
 	wire branch;
 	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off), .op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next), .Branch(branch));
@@ -78,7 +78,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] exmem_ma, exmem_ad, exmem_pc_curr, exmem_pc_next, exmem_imm;
 	wire [3:0] exmem_rs, exmem_rt, exmem_rd, exmem_op;
-	wire exmem_br;
 
 	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data), .pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm), .rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd), .op_i(idex_op), .hzrd(/**/), .clk(clk), .rst(rst), .branch(branch), .mem_addr_o(exmem_ma), .alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr), .pc_next_o(exmem_pc_next), .imm_o(exmem_imm), .rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd), .op_o(exmem_op), .br_o(exmem_br));
 
