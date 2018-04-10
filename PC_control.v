@@ -1,4 +1,4 @@
-module PC_control(PC_in, data, offset, op, C, F, PC_out);
+module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   `define B   4'b1100
   `define BR  4'b1101
   `define PCS 4'b1110
@@ -15,6 +15,8 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out);
     F;                    // in the format {N, V, S}
   output [15:0]
     PC_out;               // Desired PC value
+  output
+    Branch;		  // Whether or not a branch is being taken
 
 
   // branch instruction calculation
@@ -60,5 +62,6 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out);
     endcase
   end
 
+  assign Branch = willBranch;
   assign PC_out = PC_op;
 endmodule
