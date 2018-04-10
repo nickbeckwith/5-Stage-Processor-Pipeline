@@ -12,19 +12,19 @@ module RED(input [15:0] A, input [15:0] B, output [15:0] R);
 	assign hbyte_7 = {B[11],B[11:8]};
 	assign hbyte_8 = {B[15],B[15:12]};
 
-	CLA_5bit CLA50(.A(hbyte_4),.B(hbyte_8),.S(S1));
-	CLA_5bit CLA51(.A(hbyte_3),.B(hbyte_7),.S(S2));
-	CLA_5bit CLA52(.A(hbyte_2),.B(hbyte_6),.S(S3));
-	CLA_5bit CLA53(.A(hbyte_1),.B(hbyte_5),.S(S4));
+	CLA_5bit CLA51(.A(hbyte_3),.B(hbyte_7),.S(S2),.Cout());
+	CLA_5bit CLA50(.A(hbyte_4),.B(hbyte_8),.S(S1),.Cout());
+	CLA_5bit CLA52(.A(hbyte_2),.B(hbyte_6),.S(S3),.Cout());
+	CLA_5bit CLA53(.A(hbyte_1),.B(hbyte_5),.S(S4),.Cout());
 	assign S1_ext = {S1[4],S1};
 	assign S2_ext = {S2[4],S2};
 	assign S3_ext = {S3[4],S3};
 	assign S4_ext = {S4[4],S4};
-	CLA_6bit CLA60(.A(S1_ext),.B(S2_ext),.S(S5));
-	CLA_6bit CLA61(.A(S4_ext),.B(S3_ext),.S(S6));
+	CLA_6bit CLA60(.A(S1_ext),.B(S2_ext),.S(S5),.Cout());
+	CLA_6bit CLA61(.A(S4_ext),.B(S3_ext),.S(S6),.Cout());
 	assign S5_ext = {S5[5],S5};
 	assign S6_ext = {S6[5],S6};
 
-	CLA_7bit CLA70(.A(S5_ext),.B(S6_ext),.S(Sum));
+	CLA_7bit CLA70(.A(S5_ext),.B(S6_ext),.S(Sum),.Cout());
 	assign R = {Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum[6],Sum};
 endmodule
