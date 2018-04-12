@@ -1,10 +1,12 @@
+`include "opcodes.vh"
+
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire rst;
 	assign rst = ~(rst_n);
  	wire[15:0] instr_out;
 	wire[15:0] pc_curr;
 	wire[15:0] pc_next;
-	wire rs_mux_s, exmem_br;
+	wire exmem_br;
 	wire [2:0] ccode;
 	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
 	wire [7:0] llb_lhb_offset;
@@ -46,7 +48,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
-	assign if_ex_memread = idex_op[3] & ~(idex_op[2] | idex_op[1] | idex_op[0]);
+	assign if_ex_memread = idex_op == LW;
 	wire [3:0] idex_rt;
 	Hazard_Detection HZRD (.IF_EX_MemRead(if_ex_memread),
 													.ID_EX_RegisterRt(idex_rt), .IF_ID_RegisterRs(rs),
@@ -57,13 +59,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign opcode = ifid_instr[15:12];
 	assign hlt = &memwb_op;
 
-	assign rs_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
-	mux2_1_4b rs_mux (.d0(ifid_instr[7:4]), .d1(ifid_instr[11:8]), .b(rs_mux_o), .s(rs_mux_s));
-
-	wire rt_mux_s;
-	/*If 1, rt should equal 0*/
-	assign rt_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
-
+	assign rs_mux_o = (opcode == LHB) | (opcode == LLB) ? ifid_instr[11:8] : ifid_instr[7:4];
 
 	assign rd = ifid_instr[11:8];
 	assign rs = rs_mux_o;
@@ -76,7 +72,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign br_offset = ifid_instr[8:0];
 
 	wire [3:0] rt_o;
-	assign rt_o = rt_mux_s ? 4'b0000 : rt;
+	assign rt_o = (opcode == LHB) | (opcode == LLB) ? 4'b0000 : rt;
 
 	wire regWrite;
 	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
@@ -85,17 +81,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1),
 											.SrcData2(reg_read_val_2));
 
-/*
-	wire [15:0] LLB, LHB, LXX_o;
-	assign LLB = (reg_read_val_1 & 16'b1111111100000000) | llb_lhb_offset;
-	assign LHB = (reg_read_val_1 & 16'b0000000011111111) | (llb_lhb_offset << 8);
-	assign LXX_o = opcode[0] ? LLB : LHB;
-
-	wire imm_mux_s;
-	assign imm_mux_s = rs_mux_s;
-	wire [15:0] imm_mux_o;
-	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
-*/
 	wire [15:0] idex_rr1, idex_rr2, idex_pc, idex_imm, final_imm;
 	wire [8:0] idex_br_off;
 	wire [3:0] idex_rs, idex_rd;
@@ -145,7 +130,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign alu_flag_wrt_en[0] = idex_op[3] | (idex_op[2:0] == 3'b111) |
 	 															(idex_op[2:0] == 3'b010) ? 1'b0 : 1'b1;
 
-  assign alu_flag_wrt_en[2:1] = (idex_op == 4'b0) | (idex_op == 4'b1) ? 2'b11 : 2'b00;
+  assign alu_flag_wrt_en[2:1] = (idex_op == ADD) | (idex_op == SUB) ? 2'b11 : 2'b00;
 
 	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
 												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
@@ -166,8 +151,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
-	assign mem_en = exmem_op[3] & ~(exmem_op[2] | exmem_op[1]);
-	assign mem_wr = exmem_op[3] & ~(exmem_op[2] | exmem_op[1]) & exmem_op[0];
+	assign mem_en = (exmem_op == LW) | (exmem_op == SW);
+	assign mem_wr = exmem_op == SW;
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 
@@ -183,19 +168,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.op_o(memwb_op));
 
 	wire [15:0] rw_muxA_o;
-	wire rw_muxA_s;
-	assign rw_muxA_s = memwb_op[3] & ~(memwb_op[2] | memwb_op[1] | memwb_op[0]);
-	mux2_1_16b regWrite_muxA (.d0(memwb_ad), .d1(memwb_md), .b(rw_muxA_o), .s(rw_muxA_s));
+	assign rw_muxA_o = memwb_op == LW ? memwb_md : memwb_ad;
 
 	wire [15:0] rw_muxB_o;
-	wire rw_muxB_s;
-	assign rw_muxB_s = memwb_op[3] & memwb_op[2] & memwb_op[1] & ~(memwb_op[0]);
-	mux2_1_16b regWrite_muxB (.d0(rw_muxA_o), .d1(memwb_pc), .b(rw_muxB_o), .s(rw_muxB_s));
+	assign rw_muxB_o = memwb_op == PCS ? memwb_pc : rw_muxA_o;
 
 	wire [15:0] rw_muxC_o;
 	wire rw_muxC_s;
-	assign rw_muxC_s = memwb_op[3] & ~(memwb_op[2]) & memwb_op[1];
-	mux2_1_16b regWrite_muxC (.d0(rw_muxB_o), .d1(memwb_imm), .b(rw_muxC_o), .s(rw_muxC_s));
+	assign rw_muxC_o = (memwb_op == LHB) | (memwb_op == LLB) ? memwb_imm : rw_muxB_o;
 
 	assign dest_data = rw_muxC_o;
 endmodule
