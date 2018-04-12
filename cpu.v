@@ -1,4 +1,19 @@
-`include "opcodes.vh"
+`define ADD     4'b0000
+`define SUB     4'b0001
+`define RED     4'b0010
+`define XOR     4'b0011
+`define SLL     4'b0100
+`define SRA     4'b0101
+`define ROR     4'b0110
+`define PADDSB  4'b0111
+`define LW      4'b1000
+`define SW      4'b1001
+`define LHB     4'b1010
+`define LLB     4'b1011
+`define B       4'b1100
+`define BR      4'b1101
+`define PCS     4'b1110
+`define HLT     4'b1111
 
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire rst;
@@ -48,7 +63,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
-	assign if_ex_memread = idex_op == LW;
+	assign if_ex_memread = idex_op == `LW;
 	wire [3:0] idex_rt;
 	Hazard_Detection HZRD (.IF_EX_MemRead(if_ex_memread),
 													.ID_EX_RegisterRt(idex_rt), .IF_ID_RegisterRs(rs),
@@ -59,7 +74,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign opcode = ifid_instr[15:12];
 	assign hlt = &memwb_op;
 
-	assign rs_mux_o = (opcode == LHB) | (opcode == LLB) ? ifid_instr[11:8] : ifid_instr[7:4];
+	assign rs_mux_o = (opcode == `LHB) | (opcode == `LLB) ? ifid_instr[11:8] : ifid_instr[7:4];
 
 	assign rd = ifid_instr[11:8];
 	assign rs = rs_mux_o;
@@ -72,7 +87,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign br_offset = ifid_instr[8:0];
 
 	wire [3:0] rt_o;
-	assign rt_o = (opcode == LHB) | (opcode == LLB) ? 4'b0000 : rt;
+	assign rt_o = (opcode == `LHB) | (opcode == `LLB) ? 4'b0000 : rt;
 
 	wire regWrite;
 	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
@@ -130,7 +145,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign alu_flag_wrt_en[0] = idex_op[3] | (idex_op[2:0] == 3'b111) |
 	 															(idex_op[2:0] == 3'b010) ? 1'b0 : 1'b1;
 
-  assign alu_flag_wrt_en[2:1] = (idex_op == ADD) | (idex_op == SUB) ? 2'b11 : 2'b00;
+  assign alu_flag_wrt_en[2:1] = (idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
 
 	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
 												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
@@ -151,7 +166,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
-	assign mem_en = (exmem_op == LW) | (exmem_op == SW);
+	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);
 	assign mem_wr = exmem_op == SW;
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
@@ -168,14 +183,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.op_o(memwb_op));
 
 	wire [15:0] rw_muxA_o;
-	assign rw_muxA_o = memwb_op == LW ? memwb_md : memwb_ad;
+	assign rw_muxA_o = memwb_op == `LW ? memwb_md : memwb_ad;
 
 	wire [15:0] rw_muxB_o;
-	assign rw_muxB_o = memwb_op == PCS ? memwb_pc : rw_muxA_o;
+	assign rw_muxB_o = memwb_op == `PCS ? memwb_pc : rw_muxA_o;
 
 	wire [15:0] rw_muxC_o;
 	wire rw_muxC_s;
-	assign rw_muxC_o = (memwb_op == LHB) | (memwb_op == LLB) ? memwb_imm : rw_muxB_o;
+	assign rw_muxC_o = (memwb_op == `LHB) | (memwb_op == `LLB) ? memwb_imm : rw_muxB_o;
 
 	assign dest_data = rw_muxC_o;
 endmodule
