@@ -22,7 +22,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	/*Hazard Unit Wires*/
 	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
 
-	add_16b PC_ADD (.a(pc_curr), .b(16'b0000000000000010), .cin(1'b0), .s(pc_add_o), .cout());
+	add_16b PC_ADD (.a(pc_curr), .b(16'b10), .cin(1'b0), .s(pc_add_o), .cout());
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
 	// preemptive halt needs to stop the instruction memory queue at read
@@ -189,13 +189,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] rw_muxB_o;
 	wire rw_muxB_s;
-	assign rw_muxB_s = memwb_op[3] & memwb_op[2] & memwb_op[1] & ~(memwb_op[0]);
+	// if the operation is PCS
+	assign rw_muxB_s = memwb_op == 4'b1110;
 	mux2_1_16b regWrite_muxB (.d0(rw_muxA_o), .d1(memwb_pc), .b(rw_muxB_o), .s(rw_muxB_s));
 
-	wire [15:0] rw_muxC_o;
-	wire rw_muxC_s;
-	assign rw_muxC_s = memwb_op[3] & ~(memwb_op[2]) & memwb_op[1];
-	mux2_1_16b regWrite_muxC (.d0(rw_muxB_o), .d1(memwb_imm), .b(rw_muxC_o), .s(rw_muxC_s));
-
-	assign dest_data = rw_muxC_o;
+	assign dest_data = rw_muxB_o;
 endmodule
