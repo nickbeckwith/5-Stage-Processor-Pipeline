@@ -85,19 +85,7 @@ module cpu_tb();
          if (Halt || RegWrite || MemWrite) begin
             inst_count = inst_count + 1;
          end
-         $fdisplay(sim_log_file, "SIMLOG:: %20s %20s %20s %20s %20s",
-                                          "IF", "DE", "EX", "MEM", "WB");
-         // for IF
-         $fwrite(sim_log_file, "SIMLOG:: PC: %5d I: %5x",
-                  PC,
-                  Inst);
-                  // and any other information you think is important for this stage)
-         $fwrite(sim_log_file, "SIMLOG:: PC: %5d, I: %5x",
-                  DUT.ifid_pc,
-                  DUT.ifid_instr);
-                  // for an example. Just keep this going. fwrite doesn't put a new line afterwards
-                  // fdisplay does.
-         $fdisplay(sim_log_file, "SIMLOG:: Cycle %5d PC: %5x I: %5x R: %d %2d %5x M: %d %d %5x %5x",
+         $fdisplay(sim_log_file, "SIMLOG:: Cycle %d PC: %8x I: %8x R: %d %3d %8x M: %d %d %8x %8x",
                   cycle_count,
                   PC,
                   Inst,
@@ -171,7 +159,7 @@ module cpu_tb();
    assign RegWrite = ~(DUT.exmem_op[3]) | ~(DUT.exmem_op[2]) | (DUT.exmem_op[1] & ~(DUT.exmem_op[0]));
    // Is memory being read, one bit signal (1 means yes, 0 means no)
 
-   assign WriteRegister = DUT.memwb_rd;
+   assign WriteRegister = DUT.exmem_rd;
    // The name of the register being written to. (4 bit signal)
 
    assign WriteData =  DUT.dest_data;
