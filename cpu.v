@@ -18,15 +18,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 
 	/*Hazard Unit Wires*/
-	wire if_ex_memread, stall_n, write_pc, write_if_id_reg, memwb_halt;
+	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
 
 	add_16b PC_ADD (.a(pc_curr), .b(16'b0000000000000010), .cin(1'b0), .s(pc_add_o), .cout());
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
 	// if we get a branch from exmem, give the PC the new branched PC.
 	assign pc_mux_o = exmem_br ? exmem_pc_next : pc_add_o;
-	wire pc_write_final;
-	assign pc_write_final = write_pc & ~(memwb_halt);
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr), .Bitline2());
 
 	assign pc_out = pc_curr;
@@ -83,8 +81,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [3:0] exmem_op, exmem_rd;
 	fwd_unit FWD (.exmem_op(exmem_op), .exmem_rd(exmem_rd), .memwb_op(memwb_op), .memwb_rd(memwb_rd), .idex_rs(idex_rs), .idex_rt(idex_rt), .fwdA(alu_mux_a), .fwdB(alu_mux_b));
 
-	wire branch, halt;
-	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off), .op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next), .Branch(branch), .Halt(halt));
+	wire branch;
+	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off), .op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next), .Branch(branch));
 
 
 	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad;
@@ -100,9 +98,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] exmem_ma, exmem_pc_curr, exmem_imm;
 	wire [3:0] exmem_rs, exmem_rt;
-	wire exmem_halt;
 
-	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data), .pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm), .rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd), .op_i(idex_op), .hzrd(stall_n), .clk(clk), .rst(rst), .branch(branch), .halt_i(halt), .mem_addr_o(exmem_ma), .alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr), .pc_next_o(exmem_pc_next), .imm_o(exmem_imm), .rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd), .op_o(exmem_op), .br_o(exmem_br), .halt_o(exmem_halt));
+	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data), .pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm), .rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd), .op_i(idex_op), .hzrd(stall_n), .clk(clk), .rst(rst), .branch(branch), .mem_addr_o(exmem_ma), .alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr), .pc_next_o(exmem_pc_next), .imm_o(exmem_imm), .rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd), .op_o(exmem_op), .br_o(exmem_br));
 
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
@@ -113,7 +110,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
 
-	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad), .pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs), .rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op), .hzrd(stall_n), .clk(clk), .rst(rst), .halt(exmem_halt), .mem_data_o(memwb_md), .alu_data_o(memwb_ad), .pc_o(memwb_pc), .imm_o(memwb_imm), .rs_o(memwb_rs), .rt_o(memwb_rt), .rd_o(memwb_rd), .op_o(memwb_op), .halt_o(memwb_halt));
+	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad), .pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs), .rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op), .hzrd(stall_n), .clk(clk), .rst(rst), .mem_data_o(memwb_md), .alu_data_o(memwb_ad), .pc_o(memwb_pc), .imm_o(memwb_imm), .rs_o(memwb_rs), .rt_o(memwb_rt), .rd_o(memwb_rd), .op_o(memwb_op));
 
 	wire [15:0] rw_muxA_o;
 	wire rw_muxA_s;
