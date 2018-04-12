@@ -51,6 +51,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign rs_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
 	mux2_1_4b rs_mux (.d0(ifid_instr[7:4]), .d1(ifid_instr[11:8]), .b(rs_mux_o), .s(rs_mux_s));
 
+	wire rt_mux_s;
+	/*If 1, rt should equal 0*/
+	assign rt_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
+	
+	
 	assign rd = ifid_instr[11:8];
 	assign rs = rs_mux_o;
 	assign rt = opcode[3] ? ifid_instr[11:8] : ifid_instr[3:0];
@@ -61,11 +66,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign ccode = ifid_instr[11:9];
 	assign br_offset = ifid_instr[8:0];
 
+	wire [3:0] rt_o;
+	assign rt_0 = rt_mux_s ? 4'b0000 : rt;
 
 	wire regWrite;
 	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
 	wire [3:0] memwb_rd;
-	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt), .DstReg(memwb_rd), .WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1), .SrcData2(reg_read_val_2));
+	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt_o), .DstReg(memwb_rd), .WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1), .SrcData2(reg_read_val_2));
 
 	wire [15:0] LLB, LHB, LXX_o;
 	assign LLB = (reg_read_val_1 & 16'b1111111100000000) | llb_lhb_offset;
