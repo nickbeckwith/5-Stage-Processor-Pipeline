@@ -15,9 +15,9 @@
 `define PCS     4'b1110
 `define HLT     4'b1111
 
-module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
+module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, Flag);
 	input [15:0] InputA, InputB, Offset;
-	input [3:0] Opcode;
+	input [3:0] Opcode, Shift_Imm;
 	output [15:0] OutputA, OutputB;
 	output [2:0] Flag;
 
@@ -33,7 +33,7 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 
 	wire [15:0] shift_o;
 	wire shift_f;
-	shifter SHIFT (shift_o, shift_f, InputA, InputB[3:0], Opcode[1:0]);
+	shifter SHIFT (shift_o, shift_f, InputA, Shift_Imm, Opcode[1:0]);
 
 	wire [15:0] paddsb_o;
 	paddsb PADDSB (InputA, InputB, paddsb_o);
