@@ -67,7 +67,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign br_offset = ifid_instr[8:0];
 
 	wire [3:0] rt_o;
-	assign rt_0 = rt_mux_s ? 4'b0000 : rt;
+	assign rt_o = rt_mux_s ? 4'b0000 : rt;
 
 	wire regWrite;
 	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
