@@ -28,6 +28,7 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 // if SrcReg1 == DstReg then set SrcData1 to DstData
 // if SrcReg2 == DstReg then set SrcData2 to DstData
 // Should use combinational logic because buffers might result in a high impedence read
-	assign SrcData2 = SrcReg2 == DstReg ? DstData : q2;
-	assign SrcData1 = SrcReg1 == DstReg ? DstData : q1;
+	assign SrcData1 = SrcReg1 == DstReg ? DstData : OUT1;
+	assign SrcData2 = SrcReg2 == DstReg ? DstData : OUT2;
+
 endmodule
