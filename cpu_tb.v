@@ -31,9 +31,11 @@ module cpu_tb();
 		wire [8:0] IDEX_br;
 		wire [3:0] IDEX_rs, IDEX_rt, IDEX_rd, IDEX_op;
 		wire [15:0] EXMEM_pc, EXMEM_ma, EXMEM_ad, EXMEM_pcn, EXMEM_imm;
+		wire [15:0] ALU_in_a, ALU_in_b;
 		wire [3:0] EXMEM_rs, EXMEM_rt, EXMEM_rd, EXMEM_op;
 		wire [15:0] MEMWB_pc, MEMWB_md, MEMWB_ad, MEMWB_imm;
 		wire [3:0] MEMWB_rs, MEMWB_rt, MEMWB_rd, MEMWB_op;
+		wire [1:0] fwdA, fwdB;
 
    cpu DUT(.clk(clk), .rst_n(rst_n), .pc_out(PC), .hlt(Halt)); /* Instantiate your processor */
 
@@ -95,11 +97,12 @@ module cpu_tb();
          if (Halt || RegWrite || MemWrite) begin
             inst_count = inst_count + 1;
          end
-	$fdisplay(pipe_reg_file, "IFID-PC:%h INS:%h-\nIDEX-PC:%h RR1:%h RR2:%h RS:%d RT:%d RD:%d Imm:%h Br:%h Op:%d-\nEXMEM-PC:%h MA:%h AD:%h RS:%d RT:%d RD:%d Imm:%h PCN:%h Op:%d-\nMEMWB-PC:%h MD:%h AD:%h RS:%d RT:%d RD:%d Imm:%h Op:%d-\n\n",
+	$fdisplay(pipe_reg_file, "IFID-PC:%h INS:%h-\nIDEX-PC:%h RR1:%h RR2:%h RS:%d RT:%d RD:%d Imm:%h Br:%h Op:%d-\nALU-A:%h ALU-B:%h FwdA:%b FwdB:%b\nEXMEM-PC:%h MA:%h AD:%h RS:%d RT:%d RD:%d Imm:%h PCN:%h Op:%d-\nMEMWB-PC:%h MD:%h AD:%h RS:%d RT:%d RD:%d Imm:%h Op:%d RW:%b-\n\n",
 		IFID_pc, IFID_ins,
 		IDEX_pc, IDEX_rr1, IDEX_rr2, IDEX_rs, IDEX_rt, IDEX_rd, IDEX_imm, IDEX_br, IDEX_op,
+		ALU_in_a, ALU_in_b, fwdA, fwdB,
 		EXMEM_pc, EXMEM_ma, EXMEM_ad, EXMEM_rs, EXMEM_rt, EXMEM_rd, EXMEM_imm, EXMEM_pcn, EXMEM_op,
-		MEMWB_pc, MEMWB_md, MEMWB_ad, MEMWB_rs, MEMWB_rt, MEMWB_rd, MEMWB_imm, MEMWB_op);
+		MEMWB_pc, MEMWB_md, MEMWB_ad, MEMWB_rs, MEMWB_rt, MEMWB_rd, MEMWB_imm, MEMWB_op, RegWrite);
          $fdisplay(sim_log_file, "SIMLOG:: Cycle %d PC: %8x I: %8x R: %d %3d %8x M: %d %d %8x %8x",
                   cycle_count,
                   PC,
@@ -226,4 +229,8 @@ module cpu_tb();
 		assign MEMWB_rt = DUT.memwb_rt;
 		assign MEMWB_rd = DUT.memwb_rd;
 		assign MEMWB_op = DUT.memwb_op;
+		assign fwdA = DUT.alu_mux_a;
+		assign fwdB = DUT.alu_mux_b;
+		assign ALU_in_a = DUT.alu_in_a;
+		assign ALU_in_b = DUT.alu_in_b;
 endmodule

@@ -30,5 +30,4 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 // Should use combinational logic because buffers might result in a high impedence read
 	assign SrcData1 = SrcReg1 == DstReg ? DstData : OUT1;
 	assign SrcData2 = SrcReg2 == DstReg ? DstData : OUT2;
-
 endmodule
