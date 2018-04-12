@@ -190,9 +190,5 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] rw_muxB_o;
 	assign rw_muxB_o = memwb_op == `PCS ? memwb_pc : rw_muxA_o;
 
-	wire [15:0] rw_muxC_o;
-	wire rw_muxC_s;
-	assign rw_muxC_o = (memwb_op == `LHB) | (memwb_op == `LLB) ? memwb_imm : rw_muxB_o;
-
-	assign dest_data = rw_muxC_o;
+	assign dest_data = rw_muxB_o;
 endmodule
