@@ -1,4 +1,4 @@
-`include opcodes.vh
+`include "opcodes.vh"
 module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   `define B   4'b1100
   `define BR  4'b1101
