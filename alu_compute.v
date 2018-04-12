@@ -33,7 +33,7 @@ module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, 
 
 	wire [15:0] shift_o;
 	wire shift_f;
-	shifter SHIFT (shift_o, shift_f, InputA, Shift_Imm, Opcode[1:0]);
+	shifter SHIFT (.Shift_Out(shift_o), .Zero(shift_f), .Shift_In(InputA), .Shift_Val(Shift_Imm), .Mode(Opcode[1:0]));
 
 	wire [15:0] paddsb_o;
 	paddsb PADDSB (InputA, InputB, paddsb_o);
