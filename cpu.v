@@ -69,7 +69,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign rs = rs_mux_o;
 	assign rt = opcode[3] ? ifid_instr[11:8] : ifid_instr[3:0];
 	assign imm = ifid_instr[3:0];
-	assign imm_sign_ext = {{12{ifid_instr[3]}}, imm};
+	assign imm_sign_ext = {{12{imm[3]}}, imm};
 	assign llb_lhb_offset = ifid_instr[7:0];
 	assign lb_hb_off_ext = {{8{llb_lhb_offset[7]}}, llb_lhb_offset};
 	assign ccode = ifid_instr[11:9];
