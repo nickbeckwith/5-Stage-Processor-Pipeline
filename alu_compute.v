@@ -32,23 +32,24 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
-	reg [15:0] MA_out;
+	reg [15:0] OutputB_im;
 	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
 		casez (Opcode)
-			4'b1001 : OutputB = InputB;					// SW
-			4'b1010 : OutputB = LHB;						// LHB
-			4'b1011 : OutputB = LLB;						// LLB
-			4'b0000 : OutputB = addsub_o;				// addition
-			4'b0001 : OutputB = addsub_o;				// subtraction
-			4'b0010 : OutputB = red_o;
-			4'b0011 : OutputB = xor_o;
-			4'b0100 : OutputB = shift_o;
-			4'b0101 : OutputB = shift_o;
-			4'b0110 : OutputB = shift_o;
-			4'b0111 : OutputB = paddsb_o;
-			default: OutputB = 16'h0000;
+			4'b1001 : OutputB_im = InputB;					// SW
+			4'b1010 : OutputB_im = LHB;							// LHB
+			4'b1011 : OutputB_im = LLB;							// LLB
+			4'b0000 : OutputB_im = addsub_o;				// addition
+			4'b0001 : OutputB_im = addsub_o;				// subtraction
+			4'b0010 : OutputB_im = red_o;
+			4'b0011 : OutputB_im = xor_o;
+			4'b0100 : OutputB_im = shift_o;
+			4'b0101 : OutputB_im = shift_o;
+			4'b0110 : OutputB_im = shift_o;
+			4'b0111 : OutputB_im = paddsb_o;
+			default: OutputB_im = 16'h0000;
 		endcase
 	end
+	assign OutputB = OutputB_im;
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 
