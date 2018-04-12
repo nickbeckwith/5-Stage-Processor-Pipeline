@@ -1,3 +1,4 @@
+`include opcodes.vh
 module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   `define B   4'b1100
   `define BR  4'b1101
@@ -62,6 +63,6 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
     endcase
   end
 
-  assign Branch = ((op == `B) | (op == `BR) | (op ==`PCS) | (op == `HLT)) ? willBranch : 1'b0;
+  assign Branch = ((op == `B) | (op == `BR) | (op ==`PCS)) ? willBranch : 1'b0;
   assign PC_out = PC_op;
 endmodule
