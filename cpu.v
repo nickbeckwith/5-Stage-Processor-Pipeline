@@ -16,6 +16,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [3:0] memwb_op, idex_op;
 
+	wire prempt_hlt;		// hlt when it arrives directly from imemory
+
 
 	/*Hazard Unit Wires*/
 	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
@@ -23,8 +25,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	add_16b PC_ADD (.a(pc_curr), .b(16'b0000000000000010), .cin(1'b0), .s(pc_add_o), .cout());
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
-	// if we get a branch from exmem, give the PC the new branched PC.
-	assign pc_mux_o = exmem_br ? exmem_pc_next : pc_add_o;
+	// preemptive halt needs to stop the instruction memory queue at read
+	assign prempt_hlt = &instr_out[15:12];
+	// if we get a branch from exmem, give pc_next the branched value
+	// elseif hlt is asserted, stick the PC at its original value
+	// else, increment
+	assign pc_mux_o = exmem_br ? exmem_pc_next :
+													prempt_hlt ? pc_curr : pc_add_o;
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr), .Bitline2());
 
 	assign pc_out = pc_curr;
@@ -39,7 +46,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	Hazard_Detection HZRD (.IF_EX_MemRead(if_ex_memread), .ID_EX_RegisterRt(idex_rt), .IF_ID_RegisterRs(rs), .IF_ID_RegisterRt(rt), .stall_n(stall_n), .write_pc(write_pc), .write_IF_ID_reg(write_if_id_reg));
 
 	assign opcode = ifid_instr[15:12];
-	assign hlt = &opcode;
+	assign hlt = &memwb_op;
 
 	assign rs_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
 	mux2_1_4b rs_mux (.d0(ifid_instr[7:4]), .d1(ifid_instr[11:8]), .b(rs_mux_o), .s(rs_mux_s));
