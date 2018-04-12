@@ -62,6 +62,6 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
     endcase
   end
 
-  assign Branch = willBranch;
+  assign Branch = ((op == `B) | (op == `BR) | (op ==`PCS) | (op == `HLT)) ? willBranch : 1'b0;
   assign PC_out = PC_op;
 endmodule

@@ -91,7 +91,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire regWrite;
 	// probably should make this more readable in the future //
-	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
+	// assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
+	assign regWrite = ~((memwb_op == `SW) | (memwb_op == `B) | (memwb_op == `BR) | (memwb_op == `HLT));
 	wire [3:0] memwb_rd;
 	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt_o), .DstReg(memwb_rd),
 											.WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1),
@@ -168,7 +169,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
 	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);
-	assign mem_wr = exmem_op == SW;
+	assign mem_wr = exmem_op == `SW;
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 
