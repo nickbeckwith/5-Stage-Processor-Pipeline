@@ -18,7 +18,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 
 	/*Hazard Unit Wires*/
-	wire if_ex_memread, stall_n, write_pc, write_if_id_reg, memwb_halt, halt;
+	wire if_ex_memread, stall_n, write_pc, write_if_id_reg, memwb_halt;
 
 	add_16b PC_ADD (.a(pc_curr), .b(16'b0000000000000010), .cin(1'b0), .s(pc_add_o), .cout());
 
@@ -82,7 +82,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [3:0] exmem_op, exmem_rd;
 	fwd_unit FWD (.exmem_op(exmem_op), .exmem_rd(exmem_rd), .memwb_op(memwb_op), .memwb_rd(memwb_rd), .idex_rs(idex_rs), .idex_rt(idex_rt), .fwdA(alu_mux_a), .fwdB(alu_mux_b));
 
-	wire branch;
+	wire branch, halt;
 	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off), .op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next), .Branch(branch), .Halt(halt));
 
 
