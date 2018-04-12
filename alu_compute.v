@@ -33,8 +33,16 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 										.s(Opcode[2:0]));
 
 	wire [15:0] MB_out, MC_out;
-	mux2_1_16b MB (.d0(MA_out), .d1(InputB), .b(MB_out), .s(Opcode[3]));
-	assign MC_out = Opcode == 4'b101? ? Offset : MB_out;
+	wire lw_sw;
+	assign lw_sw = Opcode == 4'b100? ? 1'b1 : 1'b0;
+	mux2_1_16b MB (.d0(MA_out), .d1(InputB), .b(MB_out), .s(lw_sw);
+
+	wire [15:0] LLB, LHB, LXX_o;
+	assign LLB = (InputA & 16'b1111111100000000) | Offset;
+	assign LHB = (InputA & 16'b0000000011111111) | (Offset << 8);
+	assign LXX_o = Opcode[0] ? LLB : LHB;
+
+	assign MC_out = Opcode == 4'b101? ? LXX_o : MB_out;
 	assign OutputB = MC_out;
 
 	//0 = Z

@@ -85,6 +85,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1),
 											.SrcData2(reg_read_val_2));
 
+/*
 	wire [15:0] LLB, LHB, LXX_o;
 	assign LLB = (reg_read_val_1 & 16'b1111111100000000) | llb_lhb_offset;
 	assign LHB = (reg_read_val_1 & 16'b0000000011111111) | (llb_lhb_offset << 8);
@@ -94,14 +95,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign imm_mux_s = rs_mux_s;
 	wire [15:0] imm_mux_o;
 	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
-
+*/
 	wire [15:0] idex_rr1, idex_rr2, idex_pc, idex_imm;
 	wire [8:0] idex_br_off;
 	wire [3:0] idex_rs, idex_rd;
 	wire [2:0] idex_ccode;
 
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
-								.pc_i(ifid_pc), .imm_i(imm_mux_o), .br_off_i(br_offset),
+								.pc_i(ifid_pc), .imm_i(lb_hb_off_ext), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
 								.hzrd(stall_n), .clk(clk), .rst(rst), .branch(exmem_br),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
