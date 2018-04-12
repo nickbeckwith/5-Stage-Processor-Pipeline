@@ -24,8 +24,7 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 	wire [15:0] mem_addr, rs_even, imm_shift;
 	assign rs_even = InputA & 16'b1111111111111110;
 	assign imm_shift = Offset << 1;
-	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(mem_addr), .cout());
-	assign OutputA = mem_addr;
+	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(OutputA), .cout());
 
 	wire [15:0] LLB, LHB, LXX_o;
 	assign LLB = (InputA & 16'b1111111100000000) | Offset;
@@ -35,16 +34,16 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
 	reg [15:0] MA_out;
-	always begin
+	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
 		case (Opcode[2:0])
-			0 : MA_out = addsub_o;
-			1 : MA_out = addsub_o;
-			2 : MA_out = red_o;
-			3 : MA_out = xor_o;
-			4 : MA_out = shift_o;
-			5 : MA_out = shift_o;
-			6 : MA_out = shift_o;
-			7 : MA_out = paddsb_o;
+			3'd0 : MA_out = addsub_o;
+			3'd1 : MA_out = addsub_o;
+			3'd2 : MA_out = red_o;
+			3'd3 : MA_out = xor_o;
+			3'd4 : MA_out = shift_o;
+			3'd5 : MA_out = shift_o;
+			3'd6 : MA_out = shift_o;
+			3'd7 : MA_out = paddsb_o;
 			default: MA_out = 16'hxxxx;		// this should not happen
 		endcase
 	end

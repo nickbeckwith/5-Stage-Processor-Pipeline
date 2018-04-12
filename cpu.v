@@ -96,13 +96,15 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] imm_mux_o;
 	mux2_1_16b imm_mux (.d0(imm_sign_ext), .d1(LXX_o), .b(imm_mux_o), .s(imm_mux_s));
 */
-	wire [15:0] idex_rr1, idex_rr2, idex_pc, idex_imm;
+	wire [15:0] idex_rr1, idex_rr2, idex_pc, idex_imm, final_imm;
 	wire [8:0] idex_br_off;
 	wire [3:0] idex_rs, idex_rd;
 	wire [2:0] idex_ccode;
 
+	assign final_imm = opcode[1] ? lb_hb_off_ext : imm_sign_ext;
+
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
-								.pc_i(ifid_pc), .imm_i(lb_hb_off_ext), .br_off_i(br_offset),
+								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
 								.hzrd(stall_n), .clk(clk), .rst(rst), .branch(exmem_br),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
@@ -125,12 +127,12 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad;
 	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
 												alu_mux_a == 2'b01 ? memwb_ad :
-												alu_mux_a == 2'b10 ? exmem_ad : 16'hxxxx;
-																				// xxxx should never happen. Only for debugging purposes.
+												alu_mux_a == 2'b10 ? exmem_ad : exmem_ad;
+
 	assign alu_in_b = alu_mux_b == 2'b00 ? idex_rr2 :
 												alu_mux_b == 2'b01 ? memwb_ad :
-												alu_mux_b == 2'b10 ? exmem_ad : 16'hxxxx;
-																				// xxxx should never happen. Only for debugging purposes.
+												alu_mux_b == 2'b10 ? exmem_ad : exmem_ad;
+
 
 	wire [15:0] mem_addr, alu_data;
 	wire [2:0] alu_flag;
