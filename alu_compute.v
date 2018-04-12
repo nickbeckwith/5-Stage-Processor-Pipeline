@@ -27,35 +27,28 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(OutputA), .cout());
 
 	wire [15:0] LLB, LHB, LXX_o;
-	assign LLB = (InputA & 16'b1111111100000000) | Offset;
-	assign LHB = (InputA & 16'b0000000011111111) | (Offset << 8);
-	assign LXX_o = Opcode[0] ? LLB : LHB;
+	assign LLB = {InputA[15:8], Offset[7:0]};
+	assign LHB = {Offset[7:0], InputA[7:0]};
 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
 	reg [15:0] MA_out;
 	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
-		case (Opcode[2:0])
-			3'd0 : MA_out = addsub_o;
-			3'd1 : MA_out = addsub_o;
-			3'd2 : MA_out = red_o;
-			3'd3 : MA_out = xor_o;
-			3'd4 : MA_out = shift_o;
-			3'd5 : MA_out = shift_o;
-			3'd6 : MA_out = shift_o;
-			3'd7 : MA_out = paddsb_o;
+		casez (Opcode)
+			4'b1001 : OutputB = InputB;					// SW
+			4'b1010 : OutputB = LHB;						// LHB
+			4'b1011 : OutputB = LLB;						// LLB
+			4'b0000 : OutputB = addsub_o;				// addition
+			4'b0001 : OutputB = addsub_o;				// subtraction
+			4'b0010 : OutputB = red_o;
+			4'b0011 : OutputB = xor_o;
+			4'b0100 : OutputB = shift_o;
+			4'b0101 : OutputB = shift_o;
+			4'b0110 : OutputB = shift_o;
+			4'b0111 : OutputB = paddsb_o;
 			default: MA_out = 16'hxxxx;		// this should not happen
 		endcase
 	end
-
-	wire [15:0] MB_out, MC_out;
-	// MB_out gets InputB if LW or SW instruction
-	assign MB_out = ((Opcode == 4'b1000) | (Opcode == 4'b1001)) ? InputB : MA_out;
-
-	// MC_out gets LXX_o if the opcode is an LLB or LHB instruction
-	assign MC_out = (Opcode == 4'b1010) | (Opcode == 4'b1011) ? LXX_o : MB_out;
-	assign OutputB = MC_out;
-
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 
