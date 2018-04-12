@@ -23,16 +23,11 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 	Register RE (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[14]), .ReadEnable1(DEC1[14]), .ReadEnable2(DEC2[14]), .Bitline1(OUT1), .Bitline2(OUT2));
 	Register RF (.clk(clk), .rst(rst), .D(DstData), .WriteReg(WDEC[15]), .ReadEnable1(DEC1[15]), .ReadEnable2(DEC2[15]), .Bitline1(OUT1), .Bitline2(OUT2));
 
-/*	//Implement Internal Bypassing Somehow
-	wire select1, select2;
-
-	//0 if equal, 1 else
-	assign select1 = (SrcReg1[0] ^ DstReg[0]) | (SrcReg1[1] ^ DstReg[1]) | (SrcReg1[2] ^ DstReg[2]) | (SrcReg1[3] ^ DstReg[3]);
-	assign select2 = (SrcReg2[0] ^ DstReg[0]) | (SrcReg2[1] ^ DstReg[1]) | (SrcReg2[2] ^ DstReg[2]) | (SrcReg2[3] ^ DstReg[3]);
-
-	mux2_1_16b DATA1 (.d0(DstData), .d1(OUT1), .s(select1), .b(SrcData1));
-	mux2_1_16b DATA2 (.d0(DstData), .d1(OUT2), .s(select2), .b(SrcData2));
-*/
-	assign SrcData1 = OUT1;
-	assign SrcData2 = OUT2;
+//Implement Internal Bypassing Somehow
+// forwarding time
+// if SrcReg1 == DstReg then set SrcData1 to DstData
+// if SrcReg2 == DstReg then set SrcData2 to DstData
+// Should use combinational logic because buffers might result in a high impedence read
+	assign SrcData2 = SrcReg2 == DstReg ? DstData : q2;
+	assign SrcData1 = SrcReg1 == DstReg ? DstData : q1;
 endmodule

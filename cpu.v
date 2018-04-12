@@ -54,8 +54,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire rt_mux_s;
 	/*If 1, rt should equal 0*/
 	assign rt_mux_s = opcode[3] & ~(opcode[2]) & opcode[1];
-	
-	
+
+
 	assign rd = ifid_instr[11:8];
 	assign rs = rs_mux_o;
 	assign rt = opcode[3] ? ifid_instr[11:8] : ifid_instr[3:0];
@@ -98,10 +98,16 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire branch;
 	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off), .op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next), .Branch(branch));
 
-
+	// ALU inputs
 	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad;
-	mux3_1_16b ALU_MUX_A (.d0(idex_rr1), .d1(memwb_ad), .d2(exmem_ad), .b(alu_in_a), .s(alu_mux_a));
-	mux3_1_16b ALU_MUX_B (.d0(idex_rr2), .d1(memwb_ad), .d2(exmem_ad), .b(alu_in_b), .s(alu_mux_b));
+	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
+												alu_mux_a == 2'b01 ? memwb_ad :
+												alu_mux_a == 2'b10 ? exmem_ad : 16'hxxxx;
+																				// xxxx should never happen. Only for debugging purposes.
+	assign alu_in_b = alu_mux_b == 2'b00 ? idex_rr2 :
+												alu_mux_b == 2'b01 ? memwb_ad :
+												alu_mux_b == 2'b10 ? exmem_ad : 16'hxxxx;
+																				// xxxx should never happen. Only for debugging purposes.
 
 	wire [15:0] mem_addr, alu_data;
 	wire [2:0] alu_flag;
