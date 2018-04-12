@@ -72,7 +72,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 													.write_IF_ID_reg(write_if_id_reg));
 
 	assign opcode = ifid_instr[15:12];
-	assign hlt = &memwb_op;
+	assign hlt = memwb_op == `HLT;
 
 	assign rs_mux_o = (opcode == `LHB) | (opcode == `LLB) ? ifid_instr[11:8] : ifid_instr[7:4];
 
@@ -90,6 +90,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign rt_o = (opcode == `LHB) | (opcode == `LLB) ? 4'b0000 : rt;
 
 	wire regWrite;
+	// probably should make this more readable in the future //
 	assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
 	wire [3:0] memwb_rd;
 	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt_o), .DstReg(memwb_rd),
