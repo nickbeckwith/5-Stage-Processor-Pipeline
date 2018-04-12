@@ -24,8 +24,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
 	// if we get a branch from exmem, give the PC the new branched PC.
-	assign pc_mux_o = exmem_br | halt ? exmem_pc_next : pc_add_o;
-
+	assign pc_mux_o = exmem_br ? exmem_pc_next : pc_add_o;
+	wire pc_write_final;
+	assign pc_write_final = write_pc & ~(memwb_halt);
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc), .ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr), .Bitline2());
 
 	assign pc_out = pc_curr;
