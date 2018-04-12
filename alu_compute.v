@@ -46,16 +46,17 @@ module alu_compute(InputA, InputB, Offset, Opcode, OutputA, OutputB, Flag);
 			4'b0101 : OutputB = shift_o;
 			4'b0110 : OutputB = shift_o;
 			4'b0111 : OutputB = paddsb_o;
-			default: MA_out = 16'hxxxx;		// this should not happen
+			default: OutputB = 16'h0000;
 		endcase
 	end
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 
+	// flags. Flag register is write restricted depending on opcode
 	//0 = Z
-	assign Flag[0] = MB_out == 16'b0 ? 1'b1 : 1'b0;
+	assign Flag[0] = OutputB == 16'h0000;
 	//1 = V
-	assign Flag[1] = addsub_f[1] & ~(Opcode[3] | Opcode[2] | Opcode[1]);
+	assign Flag[1] = addsub_f[1];
 	//2 = N
-	assign Flag[2] = addsub_f[2] & ~(Opcode[3] | Opcode[2] | Opcode[1]);
+	assign Flag[2] = addsub_f[2];
 endmodule

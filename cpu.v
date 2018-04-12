@@ -140,8 +140,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.Opcode(idex_op), .OutputA(mem_addr), .OutputB(alu_data),
 											.Flag(alu_flag));
 
+	wire [2:0] alu_flag_wrt_en;
+	// if it's a mem write, RED or PADDSB, don't write to zero reg
+	assign alu_flag_wrt_en[0] = idex_op[3] | (idex_op[2:0] == 3'b111) |
+	 															(idex_op[2:0] == 3'b010) ? 1'b0 : 1'b1;
 
-	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(1'b1),
+  assign alu_flag_wrt_en[2:1] = (idex_op == 4'b0) | (idex_op == 4'b1) ? 2'b11 : 2'b00;
+
+	FlagRegister FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
 												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
 												.Bitline1(FLAG_o), .Bitline2());
 
