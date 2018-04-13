@@ -126,13 +126,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.Branch(branch));
 
 	// ALU inputs
-	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad;
+	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad, memwb_fwd_data;
 	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
-												alu_mux_a == 2'b01 ? memwb_ad :
+												alu_mux_a == 2'b01 ? memwb_fwd_data :
 												alu_mux_a == 2'b10 ? exmem_ad : exmem_ad;
 
 	assign alu_in_b = alu_mux_b == 2'b00 ? idex_rr2 :
-												alu_mux_b == 2'b01 ? memwb_ad :
+												alu_mux_b == 2'b01 ? memwb_fwd_data :
 												alu_mux_b == 2'b10 ? exmem_ad : exmem_ad;
 
 
@@ -176,6 +176,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
 
+	assign memwb_fwd_data = memwb_op == `LW ? memwb_md : memwb_ad;
 	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad),
 									.pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs),
 									.rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op),
