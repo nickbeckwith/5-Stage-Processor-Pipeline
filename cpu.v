@@ -139,7 +139,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] mem_addr, alu_data;
 	wire [2:0] alu_flag;
 	alu_compute ALU(.InputA(alu_in_a), .InputB(alu_in_b), .Offset(idex_imm),
-											.Shift_Imm(idex_rt), .Opcode(idex_op), .OutputA(mem_addr), 
+											.Shift_Imm(idex_rt), .Opcode(idex_op), .OutputA(mem_addr),
 											.OutputB(alu_data), .Flag(alu_flag));
 
 	wire [2:0] alu_flag_wrt_en;
