@@ -8,12 +8,12 @@ module Hazard_Detection(input IF_EX_MemRead, input [3:0]ID_EX_RegisterRt, input[
 	wire [3:0] Rs_Eq_Rt, Rt_Eq_Rt;
 	wire reg_cond1, reg_cond2, final_reg_cond;
 	
-  assign Rs_Eq_Rt = ID_EX_RegisterRt^IF_ID_RegisterRs; 
-	assign Rt_Eq_Rt = ID_EX_RegisterRt^IF_ID_RegisterRt; 
-	assign reg_cond1 = |Rs_Eq_Rt; 
-	assign reg_cond2 = |Rt_Eq_Rt;  
-	assign final_reg_cond = ~(reg_cond1|reg_cond2);
-	
+  	assign Rs_Eq_Rt = ID_EX_RegisterRt == IF_ID_RegisterRs ? 1'b1: 1'b0; 
+	assign Rt_Eq_Rt = ID_EX_RegisterRt == IF_ID_RegisterRt ? 1'b1 : 1'b0; 
+	//assign reg_cond1 = |Rs_Eq_Rt; 
+	//assign reg_cond2 = |Rt_Eq_Rt;  
+	//assign final_reg_cond = ~(reg_cond1|reg_cond2);
+	assign final_reg_cond = Rs_Eq_Rt | Rt_Eq_Rt;
   //0 if stall has to occur - add as controlling signal to mux controlling output of control unit 
 	// if this signal is 0, output of mux should be 0s else select the control from control unit - no ops
 	assign stall_n = (IF_EX_MemRead&final_reg_cond) ? 1'b0 : 1'b1;
