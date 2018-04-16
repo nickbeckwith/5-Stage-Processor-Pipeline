@@ -20,11 +20,23 @@ module cpu_tb();
 
    integer     trace_file;
    integer     sim_log_file;
+   integer	pipe_reg_file;
 
    reg clk; /* Clock input */
    reg rst_n; /* (Active low) Reset input */
 
 
+		wire [15:0] IFID_pc, IFID_ins;
+		wire [15:0] IDEX_pc, IDEX_rr1, IDEX_rr2, IDEX_imm;
+		wire [8:0] IDEX_br;
+		wire [3:0] IDEX_rs, IDEX_rt, IDEX_rd, IDEX_op;
+		wire [15:0] EXMEM_pc, EXMEM_ma, EXMEM_ad, EXMEM_pcn, EXMEM_imm;
+		wire [15:0] ALU_in_a, ALU_in_b;
+		wire [3:0] EXMEM_rs, EXMEM_rt, EXMEM_rd, EXMEM_op;
+		wire [15:0] MEMWB_pc, MEMWB_md, MEMWB_ad, MEMWB_imm;
+		wire [3:0] MEMWB_rs, MEMWB_rt, MEMWB_rd, MEMWB_op;
+		wire [1:0] fwdA, fwdB;
+		wire hzrd, branch;
 
    cpu DUT(.clk(clk), .rst_n(rst_n), .pc_out(PC), .hlt(Halt)); /* Instantiate your processor */
 
@@ -41,6 +53,7 @@ module cpu_tb();
       inst_count = 0;
       trace_file = $fopen("verilogsim.trace");
       sim_log_file = $fopen("verilogsim.log");
+      pipe_reg_file = $fopen("verilogsim_prf.log");
 
    end
 
@@ -85,6 +98,13 @@ module cpu_tb();
          if (Halt || RegWrite || MemWrite) begin
             inst_count = inst_count + 1;
          end
+	$fdisplay(pipe_reg_file, "HZRD:%b BR:%b\nIFID-PC:%h INS:%h-\nIDEX-PC:%h RR1:%h RR2:%h RS:%d RT:%d RD:%d Imm:%h Br:%h Op:%d-\nALU-A:%h ALU-B:%h FwdA:%b FwdB:%b\nEXMEM-PC:%h MA:%h AD:%h RS:%d RT:%d RD:%d Imm:%h PCN:%h Op:%d-\nMEMWB-PC:%h MD:%h AD:%h RS:%d RT:%d RD:%d Imm:%h Op:%d RW:%b-\n\n",
+		hzrd, branch,
+		IFID_pc, IFID_ins,
+		IDEX_pc, IDEX_rr1, IDEX_rr2, IDEX_rs, IDEX_rt, IDEX_rd, IDEX_imm, IDEX_br, IDEX_op,
+		ALU_in_a, ALU_in_b, fwdA, fwdB,
+		EXMEM_pc, EXMEM_ma, EXMEM_ad, EXMEM_rs, EXMEM_rt, EXMEM_rd, EXMEM_imm, EXMEM_pcn, EXMEM_op,
+		MEMWB_pc, MEMWB_md, MEMWB_ad, MEMWB_rs, MEMWB_rt, MEMWB_rd, MEMWB_imm, MEMWB_op, RegWrite);
          $fdisplay(sim_log_file, "SIMLOG:: Cycle %d PC: %8x I: %8x R: %d %3d %8x M: %d %d %8x %8x",
                   cycle_count,
                   PC,
@@ -156,14 +176,14 @@ module cpu_tb();
 //   assign PC = DUT.fetch0.pcCurrent; //You won't need this because it's part of the main cpu interface
    assign Inst = DUT.instr_out;
 
-   assign RegWrite = DUT.regWrite;
+   assign RegWrite = ~(DUT.exmem_op[3]) | ~(DUT.exmem_op[2]) | (DUT.exmem_op[1] & ~(DUT.exmem_op[0]));
    // Is memory being read, one bit signal (1 means yes, 0 means no)
 
-   assign WriteRegister = DUT.rd;
+   assign WriteRegister = DUT.exmem_rd;
    // The name of the register being written to. (4 bit signal)
 
-   assign WriteData = DUT.dest_data;
-   // Data being written to the register. (16 bits)
+   assign WriteData =  DUT.dest_data;
+  // Data being written to the register. (16 bits)
 
    assign MemRead =  DUT.mem_en;
    // Is memory being read, one bit signal (1 means yes, 0 means no)
@@ -171,10 +191,10 @@ module cpu_tb();
    assign MemWrite = (DUT.mem_en & DUT.mem_wr);
    // Is memory being written to (1 bit signal)
 
-   assign MemAddress = DUT.mem_addr;
+   assign MemAddress = DUT.exmem_ma;
    // Address to access memory with (for both reads and writes to memory, 16 bits)
 
-   assign MemData = DUT.alu_data;
+   assign MemData = DUT.exmem_ad;
    // Data to be written to memory for memory writes (16 bits)
 
 //   assign Halt = DUT.memory0.halt; //You won't need this because it's part of the main cpu interface
@@ -183,4 +203,38 @@ module cpu_tb();
    /* Add anything else you want here */
 
 
+		assign IFID_pc = DUT.ifid_pc;
+		assign IFID_ins = DUT.ifid_instr;
+		assign IDEX_pc = DUT.idex_pc;
+		assign IDEX_rr1 = DUT.idex_rr1;
+		assign IDEX_rr2 = DUT.idex_rr2;
+		assign IDEX_imm = DUT.idex_imm;
+		assign IDEX_br = DUT.idex_br_off;
+		assign IDEX_rs = DUT.idex_rs;
+		assign IDEX_rt = DUT.idex_rt;
+		assign IDEX_rd = DUT.idex_rd;
+		assign IDEX_op = DUT.idex_op;
+		assign EXMEM_pc	= DUT.exmem_pc_curr;
+		assign EXMEM_ma = DUT.exmem_ma;
+		assign EXMEM_ad	= DUT.exmem_ad;
+		assign EXMEM_pcn = DUT.exmem_pc_next;
+		assign EXMEM_imm = DUT.exmem_imm;
+		assign EXMEM_rs = DUT.exmem_rs;
+		assign EXMEM_rt = DUT.exmem_rt;
+		assign EXMEM_rd = DUT.exmem_rd;
+		assign EXMEM_op = DUT.exmem_op;
+		assign MEMWB_pc = DUT.memwb_pc;
+		assign MEMWB_md = DUT.memwb_md;
+		assign MEMWB_ad = DUT.memwb_ad;
+		assign MEMWB_imm = DUT.memwb_imm;
+		assign MEMWB_rs = DUT.memwb_rs;
+		assign MEMWB_rt = DUT.memwb_rt;
+		assign MEMWB_rd = DUT.memwb_rd;
+		assign MEMWB_op = DUT.memwb_op;
+		assign fwdA = DUT.alu_mux_a;
+		assign branch = DUT.exmem_br;
+		assign fwdB = DUT.alu_mux_b;
+		assign ALU_in_a = DUT.alu_in_a;
+		assign ALU_in_b = DUT.alu_in_b;
+		assign hzrd = DUT.stall_n;
 endmodule
