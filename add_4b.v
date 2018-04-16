@@ -1,3 +1,6 @@
+`include "add_1b.v"
+`include "cla_unit.v"
+
 module add_4b(a, b, cin, s, pp, gg, cout);
 	input [3:0] a, b;
 	input cin;

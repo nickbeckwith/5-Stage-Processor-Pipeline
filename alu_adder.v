@@ -1,3 +1,5 @@
+`include "add_16b.v"
+
 module alu_adder(mode, A, B, S, N, V, Z);
 	input mode;
 	input [15:0] A, B;
@@ -7,7 +9,7 @@ module alu_adder(mode, A, B, S, N, V, Z);
 	wire [15:0] mode_ext, bin;
 	assign mode_ext = {16{mode}};
 	assign bin = B ^ mode_ext;
-	
+
 	wire [15:0] sw;
 	wire cout;
 	add_16b ADD (A, bin, mode, sw, cout);
@@ -18,5 +20,5 @@ module alu_adder(mode, A, B, S, N, V, Z);
 
 	wire [15:0] saturate;
 	assign saturate = cout ? {1'b1, {15{1'b0}}} : {1'b0, {15{1'b1}}};
-	mux2_1_16b SATS(.d0(sw), .d1(saturate), .b(S), .s(V));
+	assign S = V ? saturate : sw;
 endmodule

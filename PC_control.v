@@ -1,3 +1,5 @@
+`include "add_16b.v"
+
 `include "opcodes.vh"
 module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   `define B   4'b1100

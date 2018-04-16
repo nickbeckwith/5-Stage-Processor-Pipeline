@@ -1,3 +1,5 @@
+`include "mux2_1.v"
+
 module ror(ro, ri, rv);
 	input [15:0] ri;
 	input [3:0] rv;

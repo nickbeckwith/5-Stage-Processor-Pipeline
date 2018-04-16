@@ -1,3 +1,8 @@
+`include "CLA_Cell.v"
+`include "CLA_5bit.v"
+`include "CLA_6bit.v"
+`include "CLA_7bit.v"
+
 module RED(input [15:0] A, input [15:0] B, output [15:0] R);
 	wire [4:0] hbyte_1,hbyte_2,hbyte_3,hbyte_4,hbyte_5,hbyte_6,hbyte_7,hbyte_8,S1,S2,S3,S4;
 	wire [5:0] S1_ext,S2_ext,S3_ext,S4_ext,S5,S6;
