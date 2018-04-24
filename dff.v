@@ -1,3 +1,5 @@
+// Gokul's D-flipflop
+
 module dff (q, d, wen, clk, rst);
 
     output         q; //DFF output
@@ -15,3 +17,4 @@ module dff (q, d, wen, clk, rst);
     end
 
 endmodule
+
