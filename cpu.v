@@ -20,6 +20,28 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire prempt_hlt;		// hlt when it arrives directly from imemory
 
+	//interface with cache
+	wire data_valid;
+	wire [15:0] data_out;
+	wire [15:0] data_in;
+	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
+	// 									module sends request to memory
+	wire mem_access_type,mem_access_wen, mem_access_en;
+	wire[15:0] mem_access_addr;
+
+	assign data_in = (mem_access_type) ? exmem_ad:
+										pc_curr;
+
+	assign mem_access_en = (mem_access_type) ? mem_en:
+													1'b1;
+
+	assign mem_access_wen = (mem_access_type) ? mem_wr:
+													1'b0;
+
+	memory4c Main_Mem(.data_out(data_out), .data_in(data_in), .addr(mem_access_addr),
+										.enable(mem_access_en), .wr(mem_access_wen), .clk(clk), .rst(rst)
+										,.data_valid(data_valid));
+
 
 	/*Hazard Unit Wires*/
 	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
@@ -39,8 +61,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 										.Bitline2());
 
 	assign pc_out = pc_curr;
-	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
+	/*
+		imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
 											.enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
+											*/
 
 	wire [15:0] ifid_pc, ifid_instr;
 
@@ -155,8 +179,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire mem_en, mem_wr;
 	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);
 	assign mem_wr = exmem_op == `SW;
+	/*
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
+											*/
 
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
