@@ -38,9 +38,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign mem_access_wen = (mem_access_type) ? mem_wr:
 													1'b0;
 
-	memory4c Main_Mem(.data_out(data_out), .data_in(data_in), .addr(mem_access_addr),
-										.enable(mem_access_en), .wr(mem_access_wen), .clk(clk), .rst(rst)
-										,.data_valid(data_valid));
+	memory4c Main_Mem(.data_out(data_out), .data_in(data_in),
+										.addr(mem_access_addr),.enable(mem_access_en),
+										.wr(mem_access_wen), .clk(clk), 
+										.rst(rst), .data_valid(data_valid));
 
 
 	/*Hazard Unit Wires*/
