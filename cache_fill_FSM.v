@@ -1,11 +1,12 @@
 `include "dff.v"
 `define IDLE 0
 `define WAIT 1
-module cache_fill_FSM(clk, rst_n, miss_detected, memory_data_valid, miss_address,
+module cache_fill_FSM(clk, rst_n, wrt, miss_detected, memory_data_valid, miss_address,
                         memory_data, fsm_busy, write_data_array, write_tag_array,
                         memory_address);
   input
     clk, rst_n,
+    wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
     miss_detected,        // active high when tag match logic detects a miss
     memory_data_valid;    // active high indicates valid data returning on memory bus
   input [15:0]
@@ -85,7 +86,7 @@ module cache_fill_FSM(clk, rst_n, miss_detected, memory_data_valid, miss_address
   always @(state, miss_address, miss_detected, memory_data_valid, done) begin
     case(state)
       `IDLE : begin
-        write_data_array_reg = 1'b0;
+        write_data_array_reg = miss_detected ? 1'b0 : wrt;
         write_tag_array_reg = 1'b0;
         memory_address_reg = miss_detected ? {miss_address[15:2], cnt} : miss_address;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
