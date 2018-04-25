@@ -1,3 +1,5 @@
+`include "add_4b.v"
+
 module paddsb(A, B, S);
 	input [15:0] A, B;
 	output [15:0] S;

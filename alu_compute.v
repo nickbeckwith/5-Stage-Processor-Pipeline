@@ -1,19 +1,4 @@
-`define ADD     4'b0000
-`define SUB     4'b0001
-`define RED     4'b0010
-`define XOR     4'b0011
-`define SLL     4'b0100
-`define SRA     4'b0101
-`define ROR     4'b0110
-`define PADDSB  4'b0111
-`define LW      4'b1000
-`define SW      4'b1001
-`define LHB     4'b1010
-`define LLB     4'b1011
-`define B       4'b1100
-`define BR      4'b1101
-`define PCS     4'b1110
-`define HLT     4'b1111
+`include "alu_compute.vh"
 
 module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, Flag);
 	input [15:0] InputA, InputB, Offset;
@@ -29,7 +14,7 @@ module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, 
 	RED RED_mod (InputA, InputB, red_o);
 
 	wire [15:0] xor_o;
-	xor_16b XOR (InputA, InputB, xor_o);
+	assign xor_o = InputA ^ InputB;
 
 	wire [15:0] shift_o;
 	wire shift_f;

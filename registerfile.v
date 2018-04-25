@@ -1,3 +1,7 @@
+`include "ReadDecoder_4_16.v"
+`include "WriteDecoder_4_16.v"
+`include "Register.v"
+
 module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcReg2, input [3:0] DstReg, input WriteReg, input [15:0] DstData, inout [15:0] SrcData1, inout [15:0] SrcData2);
 	wire [15:0] DEC1, DEC2, WDEC, OUT1, OUT2,zeros;
 	assign zeros = 16'b0;

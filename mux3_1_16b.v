@@ -9,7 +9,8 @@ module mux3_1_16b(d0, d1, d2, b, s);
 		2'b10 : out = d2;
 		2'b01 : out = d1;
 		2'b00 : out = d0;
+		default: out = 0;
 	endcase
-	
+
 	assign b = out;
 endmodule

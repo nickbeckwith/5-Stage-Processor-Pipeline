@@ -1,3 +1,5 @@
+`include "mux2_1.v"
+
 module sll(so, si, sv);
 	input [15:0] si;
 	input [3:0] sv;
