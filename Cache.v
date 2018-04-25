@@ -23,24 +23,29 @@ MetaDataArray DataOut:
 	DataOut[7] = Valid Bit of block residing in corresponding DataArray Location
 	DataOut[4:0] = Tag of block residing in corresponding DataArray Location
 */
+`include "MetaDataArray.v"
+`include "DataArray.v"
 module Cache(clk, rst, Data_In, Addr_In, Meta_W, Data_W, Miss_Detected, Miss_Addr, Data_Out);
-	input clk,			//Clock Signal
-		rst,			//Reset Signal
-		Meta_W, 		//Write Signal for MetaDataArray: 0 if Read, 1 if Write
-		Data_W;			//Write Signal for DataArray: 0 if Read, 1 if Write
+	input
+		clk,						//Clock Signal
+		rst,						//Reset Signal
+		Meta_W, 				//Write Signal for MetaDataArray: 0 if Read, 1 if Write
+		Data_W;					//Write Signal for DataArray: 0 if Read, 1 if Write
+	input [15:0]
+		Data_In, 				//Data to Write to Cache
+		Addr_In;				//Address to read/write from
 
-	input [15:0] Data_In, 		//Data to Write to Cache
-		Addr_In;		//Address to read/write from
-
-	output Miss_Detected;		//Asserted When a miss has been detected
-
-	output [15:0] Miss_Addr, 	//Address of Missed block
-		Data_Out;		//Data Read from cache
+	output
+		Miss_Detected;	//Asserted When a miss has been detected
+	output [15:0]
+		Miss_Addr, 			//Address of Missed block
+		Data_Out;				//Data Read from cache
 
 	wire [4:0] Tag;			//16 - I - O = Tag
 	wire [6:0] Index;		//Log(#Sets) = I, #Sets for Direct Mapped = # Blocks = 128
-	wire [2:0] Offset;		//Log(BlockSize) = O, 16bytes (&byte addressable) => O = 4...Reason for wire being 3bits explained above module
+	wire [2:0] Offset;	//Log(BlockSize) = O, 16bytes (&byte addressable) => O = 4...Reason for wire being 3bits explained above module
 
+	// decode address
 	assign Tag = Addr_In[15:11];
 	assign Index = Addr_In[10:4];
 	assign Offset = Addr_In[3:1];
@@ -52,12 +57,12 @@ module Cache(clk, rst, Data_In, Addr_In, Meta_W, Data_W, Miss_Detected, Miss_Add
 	3. Read MetaDataArray DataOut valid bit and tag bits to verify hit/miss
 	4. React to hit/miss accordingly
 	*/
-
-	wire[7:0] Decoded_Offset;
-	wire[127:0] Decoded_Index;
-
-	3to8_Decoder Offset_Decoder(.Offset(Offset),.Decoded_Offset(Decoded_Offset));
-	128to7_Decoder Index_Decoder(.Index(Index), .Decoded_Index(Decoded_Index));
+	// decode index for blockenable
+	wire [127:0] BlockEnable;
+	decoder_7_128b dec_indx(.in(Index), .out(BlockEnable));
+	// decode offset for wordenable
+	wire [7:0] WordEnable;
+	decoder_3_8b dec_offs(.in(Offset), .out(WordEnable));
 
 
 	MetaDataArray META(.clk(), .rst(), .DataIn(), .Write(), .BlockEnable(), .DataOut());
