@@ -42,7 +42,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   reg [2:0] nxt_cnt_reg;
   assign nxt_cnt = nxt_cnt_reg;
   assign done = done_reg;
-  assign reading = reading_reg;
+  assign reading = incr_cnt ? reading_reg : 1'b0;   // reading should only occur in main mem in WAIT state
   // onto the counter logic
   always @(incr_cnt, cnt) begin
     done_reg = 0;              // equiv to putting ovfl_reg = 0 to every case stmt
