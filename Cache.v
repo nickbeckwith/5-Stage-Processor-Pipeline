@@ -23,6 +23,7 @@ MetaDataArray DataOut:
 	DataOut[7] = Valid Bit of block residing in corresponding DataArray Location
 	DataOut[4:0] = Tag of block residing in corresponding DataArray Location
 */
+`include "cache_fill_FSM.v"
 `include "MetaDataArray.v"
 `include "DataArray.v"
 module Cache(clk, rst, wrt_cmd, mem_data_valid, mem_data, addr_in, fsm_busy,
