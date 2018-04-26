@@ -87,7 +87,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
     case(state)
       `IDLE : begin
         write_data_array_reg = miss_detected ? 1'b0 : wrt;
-        write_tag_array_reg = miss_detected ? 1'b0 : wrt;
+        write_tag_array_reg = 1'b0;
         memory_address_reg = miss_detected ? {miss_address[15:2], cnt} : miss_address;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
         nxt_state_reg = miss_detected ? `WAIT : `IDLE;
@@ -96,8 +96,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
         write_data_array_reg = memory_data_valid ? 1'b1 : 1'b0;
         write_tag_array_reg = done ? 1'b1 : 1'b0;     // on transition
         memory_address_reg = {miss_address[15:2], cnt};
-        fsm_busy_reg = done ? 1'b0 : 1'b1;            // on transition
-        nxt_state_reg = done ? `IDLE : `WAIT;
+        fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
+        nxt_state_reg = done ? `IDLE : `WAIT;   // while in IDLE
       end
       default : begin     // shouldn't happen
         write_data_array_reg = 1'bx;
