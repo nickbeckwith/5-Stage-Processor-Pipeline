@@ -1,11 +1,11 @@
 `include "dff.v"
 `define IDLE 0
 `define WAIT 1
-module cache_fill_FSM(clk, rst_n, wrt, miss_detected, memory_data_valid, miss_address,
+module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_address,
                         memory_data, fsm_busy, write_data_array, write_tag_array,
                         memory_address);
   input
-    clk, rst_n,
+    clk, rst,
     wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
     miss_detected,        // active high when tag match logic detects a miss
     memory_data_valid;    // active high indicates valid data returning on memory bus
@@ -28,9 +28,9 @@ module cache_fill_FSM(clk, rst_n, wrt, miss_detected, memory_data_valid, miss_ad
   // Easier to create counter with SM so need three DF's
   wire [2:0] cnt, nxt_cnt;     // the two state variables
   wire done;                   // set when counter resets
-  dff state_ff_0(.q(cnt[0]), .d(nxt_cnt[0]), .wen(1'b1), .clk(clk), .rst(~rst_n));
-  dff state_ff_1(.q(cnt[1]), .d(nxt_cnt[1]), .wen(1'b1), .clk(clk), .rst(~rst_n));
-  dff state_ff_2(.q(cnt[2]), .d(nxt_cnt[2]), .wen(1'b1), .clk(clk), .rst(~rst_n));
+  dff state_ff_0(.q(cnt[0]), .d(nxt_cnt[0]), .wen(1'b1), .clk(clk), .rst(~rst));
+  dff state_ff_1(.q(cnt[1]), .d(nxt_cnt[1]), .wen(1'b1), .clk(clk), .rst(~rst));
+  dff state_ff_2(.q(cnt[2]), .d(nxt_cnt[2]), .wen(1'b1), .clk(clk), .rst(~rst));
   // reg versions of counter wires and assigning to their counterparts
   reg done_reg;
   reg [2:0] nxt_cnt_reg;
@@ -67,7 +67,7 @@ module cache_fill_FSM(clk, rst_n, wrt, miss_detected, memory_data_valid, miss_ad
   //////////////////////////////////////////////////////////////////////////////
   // two states so we need only one DFF and a one bit state signal
   wire state, nxt_state;           // FSM relies on state and nxt_state sigs
-  dff state_ff(.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(~rst_n));
+  dff state_ff(.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
   // list of reg signal version of outputs
   reg
     fsm_busy_reg,
@@ -87,7 +87,7 @@ module cache_fill_FSM(clk, rst_n, wrt, miss_detected, memory_data_valid, miss_ad
     case(state)
       `IDLE : begin
         write_data_array_reg = miss_detected ? 1'b0 : wrt;
-        write_tag_array_reg = 1'b0;
+        write_tag_array_reg = miss_detected ? 1'b0 : wrt;
         memory_address_reg = miss_detected ? {miss_address[15:2], cnt} : miss_address;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
         nxt_state_reg = miss_detected ? `WAIT : `IDLE;
