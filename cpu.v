@@ -34,8 +34,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign data_in = (mem_access_type) ? exmem_ad:
 										pc_curr;
 
-	assign mem_access_en = (mem_access_type) ? mem_en:
-													1'b1;
+	assign mem_access_en = i_cache_fsm_busy | d_cache_fsm_busy;
 
 	assign mem_access_wen = (mem_access_type) ? mem_wr:
 													1'b0;
