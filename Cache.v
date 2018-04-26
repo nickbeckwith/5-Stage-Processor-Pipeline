@@ -53,9 +53,9 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// decode address
 	// using address from FSM because it's equiv to addr_in unless there's a miss
 	// if there's a miss, we want to reference the correct offset as it counts from 0 to __
-	assign tag = mem_address[15:11];
-	assign index = mem_address[10:4];
-	assign offset = mem_address[3:1];
+	assign tag = miss_address[15:11];
+	assign index = miss_address[10:4];
+	assign offset = miss_address[3:1];
 
 	// decode index for blockenable
 	wire [127:0] block_en;
