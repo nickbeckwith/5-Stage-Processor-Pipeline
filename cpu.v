@@ -20,7 +20,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire prempt_hlt;		// hlt when it arrives directly from imemory
 
-	wire [1:0] sel;
+	wire  sel;
 	//interface with cache
 	wire idata_valid,ddata_valid;
 	wire [15:0] data_out, imem_data_out,dmem_data_out;
