@@ -1,5 +1,5 @@
 `include "Register.v"
-`include "Register_4b.v"
+`include "register_4b.v"
 
 module ex_mem (input [15:0] mem_addr_i, alu_data_i, pc_curr_i, pc_next_i, imm_i,
 								input [3:0] rs_i, rt_i, rd_i, op_i,
