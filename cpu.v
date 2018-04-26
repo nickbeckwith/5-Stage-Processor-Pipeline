@@ -30,7 +30,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire mem_access_type,mem_access_wen, mem_access_en;
 	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
 
-	// This might be incorrect 
+	// This might be incorrect
 	assign mem_access_type = (i_cache_fsm_busy) ? 0:
 	 													1;
 	/*These aren't correct
@@ -75,7 +75,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	Cache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(data_valid),
 				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
-				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),,.data_out(instr_out));
+				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out));
 
 	wire [15:0] ifid_pc, ifid_instr;
 
