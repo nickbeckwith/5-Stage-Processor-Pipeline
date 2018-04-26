@@ -9,12 +9,12 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
     wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
     miss_detected,        // active high when tag match logic detects a miss
     memory_data_valid,    // active high indicates valid data returning on memory bus
-    read_req,             // Asks main memory for a read.
     wrt_mem;            // write signal to cache
   input [15:0]
     miss_address,         // address that missed the cache
     memory_data;          // data returned by memory (after  delay)
   output
+    read_req,             // Asks main memory for a read.
     fsm_busy,             // asserted while FSM is busy handling the miss (can be used as pipeline stall signal)
     write_data_array,     // write enable to cache data array to signal when filling with memory_data
     write_tag_array;      // write enable to cache tag array to write tag and valid bit once all words are

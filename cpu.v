@@ -20,9 +20,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire prempt_hlt;		// hlt when it arrives directly from imemory
 
+	wire [1:0] sel;
 	//interface with cache
-	wire data_valid;
-	wire [15:0] data_out;
+	wire idata_valid,ddata_valid;
+	wire [15:0] data_out, imem_data_out,dmem_data_out;
 	wire [15:0] data_in;
 	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
 	// 									module sends request to memory
@@ -30,18 +31,27 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire mem_access_type,mem_access_wen, mem_access_en;
 	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
 
-	// This might be incorrect
-	assign mem_access_type = (i_cache_fsm_busy) ? 0:
-	 													1;
-	/*These aren't correct
-	assign data_in = (mem_access_type) ? exmem_ad:
-										0;
+	assign sel = (i_cache_fsm_busy) ? 1'b1:
+				 1'b0;
 
-	assign mem_access_en = i_cache_fsm_busy | d_cache_fsm_busy;
+	assign mem_access_addr = (sel) ? i_mem_access_addr:
+							 d_mem_access_addr;
 
-	assign mem_access_wen = (mem_access_type) ? mem_wr:
-													1'b0;
-													*/
+	assign mem_access_en =  (sel) ? icache_read_req:
+							dcache_read_req|d_cache_write;
+
+	assign mem_access_wen = (sel) ? i_cache_write:
+							d_cache_write;
+
+	assign ddata_valid = (sel) ? 1'b0:
+						 data_valid;
+
+	assign idata_valid = (sel) ? data_valid:
+						 1'b0;
+
+	assign data_in = (sel) ? 16'b0:
+					  exmem_ma;
+
 	memory4c Main_Mem(.data_out(data_out), .data_in(data_in),
 										.addr(mem_access_addr),.enable(mem_access_en),
 										.wr(mem_access_wen), .clk(clk),
@@ -71,10 +81,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
 											*/
 	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
-
-	Cache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(data_valid),
+	wire icache_read_req,dcache_read_req;
+	Cache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(idata_valid),
 				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
-				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out));
+				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out),
+				  .read_req(icache_read_req));
 
 	wire [15:0] ifid_pc, ifid_instr;
 
@@ -193,9 +204,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 											*/
-	Cache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(data_valid),
+	Cache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
 				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
-				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out));
+				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
+				  .read_req(dcache_read_req));
 
 
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;

@@ -32,13 +32,13 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 		clk,							//Clock Signal
 		rst,							//Reset Signal
 		wrt_cmd, 					//High if processor wants to write
-		mem_data_valid,		// active high indicates valid data returning on memory bus
-		read_req;					// Should control the enable signal if there's no write anywhere
+		mem_data_valid;		// active high indicates valid data returning on memory bus
 	input [15:0]
 		mem_data, 				//Data to write to Cache
 		addr_in;					//Address to read/write from
 
 	output
+		read_req,					// Should control the enable signal if there's no write anywhere
 		fsm_busy,					// asserted while FSM is busy handling the miss
 		wrt_mem;					// write command from FSM that should be connected to memory
 	output [15:0]				// (can be used as pipeline stall signal)
