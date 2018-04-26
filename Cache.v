@@ -26,20 +26,21 @@ MetaDataArray DataOut:
 `include "cache_fill_FSM.v"
 `include "MetaDataArray.v"
 `include "DataArray.v"
-module Cache(clk, rst, wrt_cmd, mem_data_valid, mem_data, addr_in, fsm_busy,
-									wrt_hit, miss_addr, data_out);
+module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
+									fsm_busy, wrt_mem, miss_addr, data_out);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
 		wrt_cmd, 					//High if processor wants to write
-		mem_data_valid;		// active high indicates valid data returning on memory bus
+		mem_data_valid,		// active high indicates valid data returning on memory bus
+		read_req;					// Should control the enable signal if there's no write anywhere
 	input [15:0]
 		mem_data, 				//Data to write to Cache
 		addr_in;					//Address to read/write from
 
 	output
 		fsm_busy,					// asserted while FSM is busy handling the miss
-		wrt_hit;					// write command from FSM that should be connected to memory
+		wrt_mem;					// write command from FSM that should be connected to memory
 	output [15:0]				// (can be used as pipeline stall signal)
 		miss_addr, 				//Address that should be attached to main memory
 		data_out;					//Data Read from cache
@@ -71,24 +72,21 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, mem_data, addr_in, fsm_busy,
 	// determine if hit or not. Valid && the tag matches
 	assign hit = meta_data[7] & (meta_data[4:0] == tag);
 
-	/////////////////////////////////////////////////////////////////
-	/////// Creation of State machine and outputs ///////////////////
-	// output
+	// instantiations////////////
 	wire
 		wrt_tag;
+	// fsm
 	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(wrt_cmd), .miss_detected(~hit),
-											.memory_data_valid(mem_data_valid), .miss_address(addr_in),
-	                    .memory_data(mem_data), .fsm_busy(fsm_busy),
+											.memory_data_valid(mem_data_valid), .read_req(read_req),
+											.wrt_mem(wrt_mem), .miss_address(addr_in),
+											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-	                    .memory_address(miss_address));
-  ///////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////
+											.memory_address(miss_address));
+
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),
 										.BlockEnable(block_en), .DataOut(meta_data));
 	DataArray DATA(.clk(clk), .rst(rst), .DataIn(mem_data), .Write(wrt_hit),
 										.BlockEnable(block_en), .WordEnable(word_en), .DataOut(data_out));
-	/////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////
+
 endmodule

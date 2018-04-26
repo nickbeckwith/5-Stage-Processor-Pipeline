@@ -1,14 +1,16 @@
 `include "dff.v"
 `define IDLE 0
 `define WAIT 1
-module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_address,
-                        memory_data, fsm_busy, write_data_array, write_tag_array,
-                        memory_address);
+module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
+                        wrt_mem, miss_address, memory_data, fsm_busy,
+                        write_data_array, write_tag_array, memory_address);
   input
     clk, rst,
     wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
     miss_detected,        // active high when tag match logic detects a miss
-    memory_data_valid;    // active high indicates valid data returning on memory bus
+    memory_data_valid,    // active high indicates valid data returning on memory bus
+    read_req,             // Asks main memory for a read.
+    wrt_mem;            // write signal to cache
   input [15:0]
     miss_address,         // address that missed the cache
     memory_data;          // data returned by memory (after  delay)
@@ -26,34 +28,41 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
   //////////////////////////////////////////////////////////////////////////////
   // need a counter that counts up to d'7 from 0 then resets. So 3 bits needed.
   // Easier to create counter with SM so need three DF's
-  wire [2:0] cnt, nxt_cnt;     // the two state variables
-  wire done;                   // set when counter resets
-  dff state_ff_0(.q(cnt[0]), .d(nxt_cnt[0]), .wen(1'b1), .clk(clk), .rst(~rst));
-  dff state_ff_1(.q(cnt[1]), .d(nxt_cnt[1]), .wen(1'b1), .clk(clk), .rst(~rst));
-  dff state_ff_2(.q(cnt[2]), .d(nxt_cnt[2]), .wen(1'b1), .clk(clk), .rst(~rst));
+  wire [3:0] cnt, nxt_cnt;     // the two state variables
+  wire done;                   // When all blks are received
+  wire reading;                // while sending requests for all 8 blocks
+  wire incr_cnt;               // continues counting. Should only be on in WAIT
+  dff state_ff_0(.q(cnt[0]), .d(nxt_cnt[0]), .wen(incr_cnt), .clk(clk), .rst(rst));
+  dff state_ff_1(.q(cnt[1]), .d(nxt_cnt[1]), .wen(incr_cnt), .clk(clk), .rst(rst));
+  dff state_ff_2(.q(cnt[2]), .d(nxt_cnt[2]), .wen(incr_cnt), .clk(clk), .rst(rst));
+  dff state_ff_3(.q(cnt[3]), .d(nxt_cnt[3]), .wen(incr_cnt), .clk(clk), .rst(rst));
   // reg versions of counter wires and assigning to their counterparts
   reg done_reg;
+  reg reading_reg;
   reg [2:0] nxt_cnt_reg;
   assign nxt_cnt = nxt_cnt_reg;
   assign done = done_reg;
-  // for readability. We want to increment count every time we receive data
-  // This assumes memory_data_valid only goes high while we're in wait stage
-  wire incr_cnt;
-  assign incr_cnt = memory_data_valid;
+  assign reading = reading_reg;
   // onto the counter logic
   always @(incr_cnt, cnt) begin
-    done_reg = 0;               // equiv to putting done = 0 to every case stmt
+    done_reg = 0;              // equiv to putting ovfl_reg = 0 to every case stmt
     case(cnt)
-      3'd0 : nxt_cnt_reg = incr_cnt ? 3'd1 : 3'd0;
-      3'd1 : nxt_cnt_reg = incr_cnt ? 3'd2 : 3'd1;
-      3'd2 : nxt_cnt_reg = incr_cnt ? 3'd3 : 3'd2;
-      3'd3 : nxt_cnt_reg = incr_cnt ? 3'd4 : 3'd3;
-      3'd4 : nxt_cnt_reg = incr_cnt ? 3'd5 : 3'd4;
-      3'd5 : nxt_cnt_reg = incr_cnt ? 3'd6 : 3'd5;
-      3'd6 : nxt_cnt_reg = incr_cnt ? 3'd7 : 3'd6;
-      3'd7 : begin
-              nxt_cnt_reg = incr_cnt ? 3'd0 : 3'd7;
-              done_reg = incr_cnt ? 1'b1 : 1'b0;
+      4'd0  : begin nxt_cnt_reg = 4'd1;  reading_reg = 1'b1; end
+      4'd1  : begin nxt_cnt_reg = 4'd2;  reading_reg = 1'b1; end
+      4'd2  : begin nxt_cnt_reg = 4'd3;  reading_reg = 1'b1; end
+      4'd3  : begin nxt_cnt_reg = 4'd4;  reading_reg = 1'b1; end
+      4'd4  : begin nxt_cnt_reg = 4'd5;  reading_reg = 1'b1; end
+      4'd5  : begin nxt_cnt_reg = 4'd6;  reading_reg = 1'b1; end
+      4'd6  : begin nxt_cnt_reg = 4'd7;  reading_reg = 1'b1; end
+      4'd7  : begin nxt_cnt_reg = 4'd8;  reading_reg = 1'b1; end
+      4'd8  : begin nxt_cnt_reg = 4'd9;  reading_reg = 1'b0; end
+      4'd9  : begin nxt_cnt_reg = 4'd10; reading_reg = 1'b0; end
+      4'd10 : begin nxt_cnt_reg = 4'd11; reading_reg = 1'b0; end
+      4'd11 : begin nxt_cnt_reg = 4'd12; reading_reg = 1'b0; end
+      4'd12 : begin
+                nxt_cnt_reg = 3'd0;
+                done_reg = incr_cnt ? 1'b1 : 1'b0;
+                reading_reg = 1'b0;
       end
       default : nxt_cnt_reg = 3'bxxx;     // shouldn't happen
     endcase
@@ -73,7 +82,10 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
     fsm_busy_reg,
     write_data_array_reg,
     write_tag_array_reg,
-    nxt_state_reg;
+    nxt_state_reg,
+    read_req_reg,
+    incr_cnt_reg,
+    wrt_mem_reg;
   reg [15:0]
     memory_address_reg;
   // assigns reg to their wire counterparts
@@ -82,6 +94,9 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
   assign write_tag_array = write_tag_array_reg;
   assign nxt_state = nxt_state_reg;
   assign memory_address = memory_address_reg;
+  assign read_req = read_req_reg;
+  assign incr_cnt = incr_cnt_reg;
+  assign wrt_mem = wrt_mem_reg;
   // onto the case statement
   always @(state, miss_address, miss_detected, memory_data_valid, done) begin
     case(state)
@@ -90,6 +105,9 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
         write_tag_array_reg = 1'b0;
         memory_address_reg = miss_detected ? {miss_address[15:2], cnt} : miss_address;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
+        incr_cnt_reg = 1'b0;
+        read_req_reg = 1'b0;
+        wrt_mem_reg = miss_detected ? 1'b0 : wrt;
         nxt_state_reg = miss_detected ? `WAIT : `IDLE;
       end
       `WAIT : begin
@@ -97,6 +115,9 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
         write_tag_array_reg = done ? 1'b1 : 1'b0;     // on transition
         memory_address_reg = {miss_address[15:2], cnt};
         fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
+        incr_cnt_reg = 1'b1;
+        read_req_reg = 1'b1;
+        wrt_mem_reg = 1'b0;     // will write after it goes back to idle
         nxt_state_reg = done ? `IDLE : `WAIT;   // while in IDLE
       end
       default : begin     // shouldn't happen
@@ -104,6 +125,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, miss_addr
         write_tag_array_reg = 1'bx;
         memory_address_reg = 16'hxxxx;
         fsm_busy_reg = 1'bx;
+        incr_cnt_reg = 1'bx;
+        read_req_reg = 1'bx;
         nxt_state_reg = 1'bx;
       end
     endcase
