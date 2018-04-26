@@ -53,9 +53,9 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// decode address
 	// using address from FSM because it's equiv to addr_in unless there's a miss
 	// if there's a miss, we want to reference the correct offset as it counts from 0 to __
-	assign tag = miss_address[15:11];
-	assign index = miss_address[10:4];
-	assign offset = miss_address[3:1];
+	assign tag = miss_addr[15:11];
+	assign index = miss_addr[10:4];
+	assign offset = miss_addr[3:1];
 
 	// decode index for blockenable
 	wire [127:0] block_en;
@@ -81,7 +81,7 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 											.wrt_mem(wrt_mem), .miss_address(addr_in),
 											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-											.memory_address(miss_address));
+											.memory_address(miss_addr));
 
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),
