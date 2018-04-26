@@ -26,9 +26,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire [15:0] data_in;
 	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
 	// 									module sends request to memory
-	wire mem_access_type,mem_access_wen, mem_access_en;
-	wire[15:0] mem_access_addr;
 
+	wire mem_access_type,mem_access_wen, mem_access_en;
+	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
+
+	/*These aren't correct
 	assign data_in = (mem_access_type) ? exmem_ad:
 										pc_curr;
 
@@ -37,10 +39,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	assign mem_access_wen = (mem_access_type) ? mem_wr:
 													1'b0;
-
+													*/
 	memory4c Main_Mem(.data_out(data_out), .data_in(data_in),
 										.addr(mem_access_addr),.enable(mem_access_en),
-										.wr(mem_access_wen), .clk(clk), 
+										.wr(mem_access_wen), .clk(clk),
 										.rst(rst), .data_valid(data_valid));
 
 
@@ -66,6 +68,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 		imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
 											.enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
 											*/
+	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
+
+	Cache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(data_valid),
+				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
+				  .wrt_hit(i_cache_write),.miss_addr(i_mem_access_addr),,.data_out(instr_out));
 
 	wire [15:0] ifid_pc, ifid_instr;
 
@@ -184,6 +191,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 											*/
+	Cache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(data_valid),
+				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
+				  .wrt_hit(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out));
+
 
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
