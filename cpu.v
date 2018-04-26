@@ -71,7 +71,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	// else, increment
 	assign pc_mux_o = exmem_br ? exmem_pc_next :
 													prempt_hlt ? pc_curr : pc_add_o;
-	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc),
+	wire write_pc_final;
+	assign write_pc_final = write_pc | n_d_cache_fsm_busy | n_i_cache_fsm_busy;
+	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc_final),
 										.ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr),
 										.Bitline2());
 
@@ -87,9 +89,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out),
 				  .read_req(icache_read_req));
 
-	wire [15:0] ifid_pc, ifid_instr;
+	assign n_i_cache_fsm_busy = ~(i_cache_fsm_busy);
 
-	if_id IFID (.clk(clk), .rst(rst), .hzrd(stall_n), .branch(exmem_br),
+	wire [15:0] ifid_pc, ifid_instr;
+	wire if_id_stall, if_id_rst;	//IF_ID_RST will be used to insert No Op into pipeline
+	assign if_id_stall = stall_n | n_d_cache_fsm_busy;
+	assign if_id_rst = rst | i_cache_fsm_busy;
+	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(exmem_br),
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
@@ -138,7 +144,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
 								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
-								.hzrd(1'b1), .clk(clk), .rst(rst), .branch(exmem_br),
+								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(exmem_br),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
 								.imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs),
 								.rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op),
@@ -189,7 +195,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data),
 										.pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm),
 										.rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd),
-										.op_i(idex_op), .hzrd(1'b1), .clk(clk), .rst(rst),
+										.op_i(idex_op), .hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst),
 										.branch(branch), .mem_addr_o(exmem_ma),
 										.alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr),
 										.pc_next_o(exmem_pc_next), .imm_o(exmem_imm),
@@ -209,6 +215,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
 				  .read_req(dcache_read_req));
 
+	assign n_d_cache_fsm_busy = ~(d_cache_fsm_busy);
 
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
@@ -217,7 +224,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad),
 									.pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs),
 									.rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op),
-									.hzrd(1'b1), .clk(clk), .rst(rst), .mem_data_o(memwb_md),
+									.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .mem_data_o(memwb_md),
 									.alu_data_o(memwb_ad), .pc_o(memwb_pc), .imm_o(memwb_imm),
 									.rs_o(memwb_rs), .rt_o(memwb_rt), .rd_o(memwb_rd),
 									.op_o(memwb_op));
