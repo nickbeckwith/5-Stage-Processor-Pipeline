@@ -20,16 +20,16 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire prempt_hlt;		// hlt when it arrives directly from imemory
 
-	wire  sel;
+	wire  sel;				// 1 for icache, 0 for dcache. Controls signals that go to main mem
 	//interface with cache
 	wire idata_valid,ddata_valid,data_valid;
 	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
-	wire [15:0] data_out, imem_data_out,dmem_data_out, exmem_ma;
+	wire [15:0] data_out, exmem_ma;
 	wire [15:0] data_in;
 	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
 	// 									module sends request to memory
 
-	wire mem_access_type,mem_access_wen, mem_access_en;
+	wire mem_access_wen, mem_access_en;
 	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
 	wire icache_read_req,dcache_read_req;
 
