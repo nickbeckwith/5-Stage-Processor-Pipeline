@@ -46,7 +46,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   assign done = done_reg;
   assign reading = incr_cnt ? reading_reg : 1'b0;   // reading should only occur in main mem in WAIT state
   // onto the counter logic
-  always @(incr_cnt, cnt) begin
+  always @* begin
     done_reg = 0;              // equiv to putting ovfl_reg = 0 to every case stmt
     case(cnt)
       4'd0  : begin nxt_cnt_reg = 4'd1;  reading_reg = 1'b1; end
@@ -81,7 +81,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   // reg version of wires
   reg [3:0] nxt_blck_off_reg;
   assign nxt_blck_off = nxt_blck_off_reg;
-  always @(blck_off) begin
+  always @* begin
 	case(blck_off)
 		4'b0000 : nxt_blck_off_reg = 4'b0010;
 		4'b0010 : nxt_blck_off_reg = 4'b0100;
@@ -126,13 +126,13 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   assign incr_cnt = incr_cnt_reg;
   assign wrt_mem = wrt_mem_reg;
   // onto the case statement
-  always @(state, miss_detected, wrt, miss_address, blck_off, cnt, memory_data_valid, done) begin
+  always @* begin
     case(state)
       `IDLE : begin
         write_data_array_reg = miss_detected ? 1'b0 : wrt;
         write_tag_array_reg = 1'b0;
-		cache_address_reg = miss_detected ? {miss_address[15:2], blck_off} : miss_address;
-        memory_address_reg = miss_detected ? {miss_address[15:2], cnt} : miss_address;
+		cache_address_reg = miss_detected ? {miss_address[15:4], blck_off} : miss_address;
+        memory_address_reg = miss_detected ? {miss_address[15:4], cnt} : miss_address;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
         incr_cnt_reg = 1'b0;
         read_req_reg = 1'b0;
@@ -142,8 +142,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
       `WAIT : begin
         write_data_array_reg = memory_data_valid ? 1'b1 : 1'b0;
         write_tag_array_reg = done ? 1'b1 : 1'b0;     // on transition
-		cache_address_reg = {miss_address[15:2], blck_off};
-        memory_address_reg = {miss_address[15:2], cnt[2:0], 1'b0};
+		cache_address_reg = {miss_address[15:4], blck_off};
+        memory_address_reg = {miss_address[15:4], cnt[2:0], 1'b0};
         fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
         incr_cnt_reg = 1'b1;
         read_req_reg = reading;    // only read on the first 8.

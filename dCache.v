@@ -49,6 +49,7 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	
 	wire [15:0] cache_address;
 	wire wrt_tag;
+	wire wrt_hit;
 	wire hit;						//set if there's a hit. Cleared if no hit.
 	wire [4:0] tag;			//16 - I - O = tag
 	wire [6:0] index;		//Log(#Sets) = I, #Sets for Direct Mapped = # Blocks = 128

@@ -35,7 +35,7 @@ module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
 	reg [15:0] OutputB_im;
-	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
+	always @* begin
 		casez (Opcode)
 			`SW 			: OutputB_im = InputB;
 			`LHB 			: OutputB_im = LHB;
