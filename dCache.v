@@ -28,12 +28,13 @@ MetaDataArray DataOut:
 `include "DataArray.v"
 `include "opcodes.vh"
 module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
-				fsm_busy, wrt_mem, miss_addr, data_out, mem_en);
+				fsm_busy, wrt_mem, miss_addr, data_out, mem_en, ifsm_busy);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
 		wrt_cmd, 					//High if processor wants to write
 		mem_en,					// enables memory/cache
+		ifsm_busy,				// prevents fsm starting while i_cache fsm is busy
 		mem_data_valid;		// active high indicates valid data returning on memory bus
 	input [15:0]
 		mem_data, 				//Data to write to Cache
@@ -86,7 +87,8 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 											.wrt_mem(wrt_mem), .miss_address(addr_in),
 											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-											.memory_address(miss_addr), .cache_address(cache_address));
+											.memory_address(miss_addr), .cache_address(cache_address),
+											.pause(ifsm_busy));
 
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),

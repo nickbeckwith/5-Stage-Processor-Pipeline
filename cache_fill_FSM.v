@@ -4,12 +4,13 @@
 module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
                         wrt_mem, miss_address, memory_data, fsm_busy,
                         write_data_array, write_tag_array, memory_address,
-						cache_address);
+						cache_address, pause);
   input
     clk, rst,
     wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
     miss_detected,        // active high when tag match logic detects a miss
     memory_data_valid,    // active high indicates valid data returning on memory bus
+	pause,					// stops count sig
     wrt_mem;            // write signal to cache
   input [15:0]
     miss_address,         // address that missed the cache
@@ -145,7 +146,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
 		cache_address_reg = {miss_address[15:4], blck_off};
         memory_address_reg = {miss_address[15:4], cnt[2:0], 1'b0};
         fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
-        incr_cnt_reg = 1'b1;
+        incr_cnt_reg = pause ? 1'b0 : 1'b1;
         read_req_reg = reading;    // only read on the first 8.
         wrt_mem_reg = 1'b0;     // will write after it goes back to idle
         nxt_state_reg = done ? `IDLE : `WAIT;   // while in IDLE

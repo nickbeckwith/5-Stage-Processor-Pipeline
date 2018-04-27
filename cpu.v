@@ -24,7 +24,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	//interface with cache
 	wire idata_valid,ddata_valid,data_valid;
 	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
-	wire [15:0] data_out, exmem_ma;
+	wire [15:0] data_out, exmem_ma, exmem_ad;
 	wire [15:0] data_in;
 	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
 	// 									module sends request to memory
@@ -53,7 +53,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 						 1'b0;
 
 	assign data_in = (sel) ? 16'b0:
-					  exmem_ma;
+					  exmem_ad;
 
 	assign n_d_cache_fsm_busy = ~(d_cache_fsm_busy);
 
@@ -170,7 +170,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											.Branch(branch));
 
 	// ALU inputs
-	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad, memwb_fwd_data;
+	wire [15:0] alu_in_a, alu_in_b, memwb_ad, memwb_fwd_data;
 	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
 												alu_mux_a == 2'b01 ? memwb_fwd_data :
 												alu_mux_a == 2'b10 ? exmem_ad : exmem_ad;
@@ -221,7 +221,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	dCache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
 				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
 				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
-				  .read_req(dcache_read_req), .mem_en(mem_en));
+				  .read_req(dcache_read_req), .mem_en(mem_en), .ifsm_busy(i_cache_fsm_busy));
 
 
 

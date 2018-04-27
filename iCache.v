@@ -82,7 +82,8 @@ module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 											.wrt_mem(wrt_mem), .miss_address(addr_in),
 											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-											.memory_address(miss_addr), .cache_address(cache_address));
+											.memory_address(miss_addr), .cache_address(cache_address),
+											.pause(1'b0));
 
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),
