@@ -27,7 +27,7 @@ MetaDataArray DataOut:
 `include "MetaDataArray.v"
 `include "DataArray.v"
 module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
-									fsm_busy, wrt_mem, miss_addr, data_out);
+				fsm_busy, wrt_mem, miss_addr, data_out, opcode);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
@@ -44,7 +44,9 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	output [15:0]				// (can be used as pipeline stall signal)
 		miss_addr, 				//Address that should be attached to main memory
 		data_out;					//Data Read from cache
-
+	
+	wire [15:0] cache_address;
+	wire wrt_tag;
 	wire hit;						//set if there's a hit. Cleared if no hit.
 	wire [4:0] tag;			//16 - I - O = tag
 	wire [6:0] index;		//Log(#Sets) = I, #Sets for Direct Mapped = # Blocks = 128
@@ -53,9 +55,9 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// decode address
 	// using address from FSM because it's equiv to addr_in unless there's a miss
 	// if there's a miss, we want to reference the correct offset as it counts from 0 to __
-	assign tag = miss_addr[15:11];
-	assign index = miss_addr[10:4];
-	assign offset = miss_addr[3:1];
+	assign tag = cache_address[15:11];
+	assign index = cache_address[10:4];
+	assign offset = cache_address[3:1];
 
 	// decode index for blockenable
 	wire [127:0] block_en;
@@ -70,18 +72,16 @@ module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	assign meta_data_vld = {1'b1, 2'b0, tag};		// valid bit is 1.
 
 	// determine if hit or not. Valid && the tag matches
-	assign hit = meta_data[7] & (meta_data[4:0] == tag);
+	// if write to meta data, assume hit is instead just 0.
+	assign hit = wrt_tag ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
 
-	// instantiations////////////
-	wire
-		wrt_tag;
 	// fsm
 	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(wrt_cmd), .miss_detected(~hit),
 											.memory_data_valid(mem_data_valid), .read_req(read_req),
 											.wrt_mem(wrt_mem), .miss_address(addr_in),
 											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-											.memory_address(miss_addr));
+											.memory_address(miss_addr), .cache_address(cache_address));
 
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),

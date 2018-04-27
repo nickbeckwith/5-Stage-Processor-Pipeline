@@ -72,14 +72,15 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
 	// preemptive halt needs to stop the instruction memory queue at read
-	assign prempt_hlt = &instr_out[15:12];
+	// preemptive halt cannot trust instr_out while cache fsm is busy
+	assign prempt_hlt = i_cache_fsm_busy ? 1'b0 : &instr_out[15:12];
 	// if we get a branch from exmem, give pc_next the branched value
 	// elseif hlt is asserted, stick the PC at its original value
 	// else, increment
 	assign pc_mux_o = exmem_br ? exmem_pc_next :
 													prempt_hlt ? pc_curr : pc_add_o;
 	wire write_pc_final;
-	assign write_pc_final = write_pc | n_d_cache_fsm_busy | n_i_cache_fsm_busy;
+	assign write_pc_final = write_pc & n_d_cache_fsm_busy & n_i_cache_fsm_busy;
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc_final),
 										.ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr),
 										.Bitline2());
@@ -91,7 +92,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 											*/
 
 
-	Cache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(idata_valid),
+	iCache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(idata_valid),
 				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
 				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out),
 				  .read_req(icache_read_req));
@@ -217,10 +218,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
 											*/
-	Cache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
+	dCache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
 				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
 				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
-				  .read_req(dcache_read_req));
+				  .read_req(dcache_read_req), .opcode(exmem_op));
 
 
 
