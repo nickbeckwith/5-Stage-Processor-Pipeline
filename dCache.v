@@ -26,13 +26,15 @@ MetaDataArray DataOut:
 `include "cache_fill_FSM.v"
 `include "MetaDataArray.v"
 `include "DataArray.v"
-module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
+module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 				fsm_busy, wrt_mem, miss_addr, data_out, opcode);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
 		wrt_cmd, 					//High if processor wants to write
 		mem_data_valid;		// active high indicates valid data returning on memory bus
+	input [3:0]
+		opcode;
 	input [15:0]
 		mem_data, 				//Data to write to Cache
 		addr_in;					//Address to read/write from

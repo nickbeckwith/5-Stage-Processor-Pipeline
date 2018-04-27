@@ -26,7 +26,7 @@ MetaDataArray DataOut:
 `include "cache_fill_FSM.v"
 `include "MetaDataArray.v"
 `include "DataArray.v"
-module Cache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
+module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 									fsm_busy, wrt_mem, miss_addr, data_out);
 	input
 		clk,							//Clock Signal
