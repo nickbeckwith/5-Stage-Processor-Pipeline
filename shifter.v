@@ -17,7 +17,7 @@ module shifter(Shift_Out, Zero, Shift_In, Shift_Val, Mode);
 	sra RIGHT (sra_out, Shift_In, Shift_Val);
 
 	//Mode = 00 => SLL, Mode = 01 => SRA, Mode = 10 => ROR
-	assign Shift_out = Mode == 2'b10 ? ror_out :
+	assign Shift_Out = Mode == 2'b10 ? ror_out :
 										 Mode == 2'b01 ? sra_out :
 										 Mode == 2'b00 ? sll_out : 16'h0;
 

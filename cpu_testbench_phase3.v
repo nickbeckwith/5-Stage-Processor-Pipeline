@@ -178,7 +178,7 @@ module cpu_ptb();
    assign RegWrite =~(DUT.exmem_op[3]) | ~(DUT.exmem_op[2]) | (DUT.exmem_op[1] & ~(DUT.exmem_op[0]));
    // Is register file being written to in this cycle, one bit signal (1 means yes, 0 means no)
 
-   assign WriteRegister = DUT.exmem_rd;
+   assign WriteRegister = DUT.memwb_rd;
    // If above is true, this should hold the name of the register being written to. (4 bit signal)
 
    assign WriteData = DUT.dest_data;
