@@ -76,7 +76,8 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// determine if hit or not. Valid && the tag matches
 	// if memory isn't being touched. It shouldn't be hit!
 	// if write to meta data, assume hit is instead just 0.
-	assign hit = wrt_tag | (~mem_en) ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
+	assign hit = ~mem_en ? 1'b1 :
+				wrt_tag ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
 
 	// fsm
 	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(wrt_cmd), .miss_detected(~hit),

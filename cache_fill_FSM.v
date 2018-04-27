@@ -143,10 +143,10 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
         write_data_array_reg = memory_data_valid ? 1'b1 : 1'b0;
         write_tag_array_reg = done ? 1'b1 : 1'b0;     // on transition
 		cache_address_reg = {miss_address[15:2], blck_off};
-        memory_address_reg = {miss_address[15:2], cnt};
+        memory_address_reg = {miss_address[15:2], cnt[2:0], 1'b0};
         fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
         incr_cnt_reg = 1'b1;
-        read_req_reg = 1'b1;
+        read_req_reg = reading;    // only read on the first 8.
         wrt_mem_reg = 1'b0;     // will write after it goes back to idle
         nxt_state_reg = done ? `IDLE : `WAIT;   // while in IDLE
       end
