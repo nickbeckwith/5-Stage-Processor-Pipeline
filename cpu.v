@@ -221,7 +221,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	dCache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
 				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
 				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
-				  .read_req(dcache_read_req), .mem_en(mem_en), .ifsm_busy(i_cache_fsm_busy));
+				  .read_req(dcache_read_req), .mem_en(mem_en), .ifsm_busy(i_cache_fsm_busy),
+				  .reg_in(data_in));
 
 
 

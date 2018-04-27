@@ -28,7 +28,7 @@ MetaDataArray DataOut:
 `include "DataArray.v"
 `include "opcodes.vh"
 module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
-				fsm_busy, wrt_mem, miss_addr, data_out, mem_en, ifsm_busy);
+				fsm_busy, wrt_mem, miss_addr, data_out, mem_en, ifsm_busy, reg_in);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
@@ -38,6 +38,7 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 		mem_data_valid;		// active high indicates valid data returning on memory bus
 	input [15:0]
 		mem_data, 				//Data to write to Cache
+		reg_in,					// data from register
 		addr_in;					//Address to read/write from
 
 	output
@@ -48,7 +49,7 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 		miss_addr, 				//Address that should be attached to main memory
 		data_out;					//Data Read from cache
 	
-	wire [15:0] cache_address;
+	wire [15:0] cache_address, data_in;	// data_in is either mem_data, reg_data
 	wire wrt_tag;
 	wire wrt_hit;
 	wire hit;						//set if there's a hit. Cleared if no hit.
@@ -70,6 +71,9 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	wire [7:0] word_en;
 	decoder_3_8b dec_offs(.in(offset), .out(word_en));
 
+	// determine what data to put what data into data_array
+	assign data_in = hit ? reg_in : mem_data;
+	
 	// meta data stored in the cache
 	wire [7:0] meta_data;
 	wire [7:0] meta_data_vld; 	// This is the only write we'd ever make to the tag.
@@ -93,7 +97,7 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// Creation of cache
 	MetaDataArray META(.clk(clk), .rst(rst), .DataIn(meta_data_vld), .Write(wrt_tag),
 										.BlockEnable(block_en), .DataOut(meta_data));
-	DataArray DATA(.clk(clk), .rst(rst), .DataIn(mem_data), .Write(wrt_hit),
+	DataArray DATA(.clk(clk), .rst(rst), .DataIn(data_in), .Write(wrt_hit),
 										.BlockEnable(block_en), .WordEnable(word_en), .DataOut(data_out));
 
 endmodule
