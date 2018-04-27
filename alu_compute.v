@@ -28,7 +28,7 @@ module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, 
 	assign imm_shift = Offset << 1;
 	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(OutputA), .cout());
 
-	wire [15:0] LLB, LHB, LXX_o;
+	wire [15:0] LLB, LHB;
 	assign LLB = {InputA[15:8], Offset[7:0]};
 	assign LHB = {Offset[7:0], InputA[7:0]};
 
