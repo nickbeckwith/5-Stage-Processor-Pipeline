@@ -26,15 +26,15 @@ MetaDataArray DataOut:
 `include "cache_fill_FSM.v"
 `include "MetaDataArray.v"
 `include "DataArray.v"
+`include "opcodes.vh"
 module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
-				fsm_busy, wrt_mem, miss_addr, data_out, opcode);
+				fsm_busy, wrt_mem, miss_addr, data_out, mem_en);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
 		wrt_cmd, 					//High if processor wants to write
+		mem_en,					// enables memory/cache
 		mem_data_valid;		// active high indicates valid data returning on memory bus
-	input [3:0]
-		opcode;
 	input [15:0]
 		mem_data, 				//Data to write to Cache
 		addr_in;					//Address to read/write from
@@ -74,8 +74,9 @@ module dCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	assign meta_data_vld = {1'b1, 2'b0, tag};		// valid bit is 1.
 
 	// determine if hit or not. Valid && the tag matches
+	// if memory isn't being touched. It shouldn't be hit!
 	// if write to meta data, assume hit is instead just 0.
-	assign hit = wrt_tag ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
+	assign hit = wrt_tag | (~mem_en) ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
 
 	// fsm
 	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(wrt_cmd), .miss_detected(~hit),
