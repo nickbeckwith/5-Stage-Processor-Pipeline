@@ -80,7 +80,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	assign fsm_busy = d_cache_fsm_busy | i_cache_fsm_busy;
 	wire branch;
 	wire exmem_br;
-	assign pc_mux_o = exmem_br ? pc_next :
+	assign pc_mux_o = (exmem_br | branch) ? pc_next :
 						prempt_hlt ? pc_curr :
 						fsm_busy ? pc_curr : pc_add_o;
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc),
@@ -105,7 +105,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire if_id_stall, if_id_rst;	//IF_ID_RST will be used to insert No Op into pipeline
 	assign if_id_stall = stall_n | n_d_cache_fsm_busy;
 	assign if_id_rst = rst | i_cache_fsm_busy;
-	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(branch),
+	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(exmem_br),
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
@@ -154,7 +154,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
 								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
-								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(branch),
+								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(exmem_br),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
 								.imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs),
 								.rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op),
