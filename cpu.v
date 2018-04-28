@@ -6,7 +6,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
  	wire[15:0] instr_out;
 	wire[15:0] pc_curr;
 	wire[15:0] pc_next;
-	wire exmem_br;
 	wire [2:0] ccode;
 	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
 	wire [7:0] llb_lhb_offset;
@@ -77,11 +76,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	// if we get a branch from exmem, give pc_next the branched value
 	// elseif hlt is asserted, stick the PC at its original value
 	// else, increment
-	assign pc_mux_o = exmem_br ? exmem_pc_next :
-													prempt_hlt ? pc_curr : pc_add_o;
-	wire write_pc_final;
-	assign write_pc_final = write_pc & n_d_cache_fsm_busy & n_i_cache_fsm_busy;
-	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc_final),
+	wire fsm_busy;
+	assign fsm_busy = d_cache_fsm_busy | i_cache_fsm_busy;
+	wire branch;
+	wire exmem_br;
+	assign pc_mux_o = exmem_br ? pc_next :
+						prempt_hlt ? pc_curr :
+						fsm_busy ? pc_curr : pc_add_o;
+	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc),
 										.ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr),
 										.Bitline2());
 
@@ -103,7 +105,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	wire if_id_stall, if_id_rst;	//IF_ID_RST will be used to insert No Op into pipeline
 	assign if_id_stall = stall_n | n_d_cache_fsm_busy;
 	assign if_id_rst = rst | i_cache_fsm_busy;
-	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(exmem_br),
+	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(branch),
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
@@ -152,7 +154,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
 								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
-								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(exmem_br),
+								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(branch),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
 								.imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs),
 								.rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op),
@@ -164,7 +166,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.memwb_rd(memwb_rd), .idex_rs(idex_rs), .idex_rt(idex_rt),
 									.fwdA(alu_mux_a), .fwdB(alu_mux_b));
 
-	wire branch;
 	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off),
 											.op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next),
 											.Branch(branch));
@@ -188,10 +189,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [2:0] alu_flag_wrt_en;
 	// if it's a mem write, RED or PADDSB, don't write to zero reg
-	assign alu_flag_wrt_en[0] = idex_op[3] | (idex_op[2:0] == 3'b111) |
-	 															(idex_op[2:0] == 3'b010) ? 1'b0 : 1'b1;
+	assign alu_flag_wrt_en[0] = rd == 4'b0 ? 1'b0 : (idex_op == `ADD) | (idex_op == `SUB) | (idex_op == `XOR) |
+													(idex_op == `SLL) | (idex_op == `SRA) | (idex_op == `ROR);
 
-  assign alu_flag_wrt_en[2:1] = (idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
+	assign alu_flag_wrt_en[2:1] = rd == 4'b0 ? 1'b0 :
+											(idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
 
 	flag_reg FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
 												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
@@ -209,7 +211,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 										.pc_next_o(exmem_pc_next), .imm_o(exmem_imm),
 										.rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd),
 										.op_o(exmem_op), .br_o(exmem_br));
-
+										
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
 	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);

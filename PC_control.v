@@ -25,14 +25,16 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   // branch instruction calculation
   wire [15:0] PC_b;         // PC target for imm branch
   wire [15:0] PC_plus_2;    // Also known as PC_increment
+  wire [15:0] data_plus_2;
   wire [15:0] offset_shift;
   assign offset_shift = {{7{offset[8]}}, offset} << 1;
   add_16b add1(.a(PC_in), .b(16'h2), .cin(1'b0), .s(PC_plus_2), .cout());
-  add_16b add2(.a(PC_plus_2), .b(offset_shift), .cin(1'b0), .s(PC_b), .cout());
+  add_16b add2(.a(PC_in), .b(offset_shift), .cin(1'b0), .s(PC_b), .cout());
+  add_16b add3(.a(data), .b(16'h2), .cin(1'b0), .s(data_plus_2), .cout());
 
   // Branch register instruction
   wire [15:0] PC_br;        // PC target for branch register
-  assign PC_br = data;             // just for readability
+  assign PC_br = data_plus_2;             // just for readability
 
 
   // determine if branching should occur through flags
@@ -57,14 +59,14 @@ module PC_control(PC_in, data, offset, op, C, F, PC_out, Branch);
   reg [15:0] PC_op;
   always @(op, F) begin
     case (op)
-      `B:   PC_op = willBranch ? PC_b : PC_plus_2;
-      `BR:  PC_op = willBranch ? PC_br : PC_plus_2;
+      `B:   PC_op = PC_b;
+      `BR:  PC_op = PC_br;
       `PCS: PC_op = PC_plus_2;
       `HLT: PC_op = PC_in;
       default: PC_op = PC_plus_2;
     endcase
   end
 
-  assign Branch = ((op == `B) | (op == `BR) | (op ==`PCS)) ? willBranch : 1'b0;
+  assign Branch = (op == `B) | (op == `BR) ? willBranch : 1'b0;
   assign PC_out = PC_op;
 endmodule
