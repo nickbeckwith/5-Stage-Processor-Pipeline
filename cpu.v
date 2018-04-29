@@ -1,4 +1,4 @@
-b_pcDIATS// Notes:
+// Notes:
 // IATS: is annihilated this stage. Will not continue to pipeline register
 // this usually means we need to process it this time instead of piping it.
 
@@ -9,16 +9,16 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////// F ///////////////////////////////////////
   wire
-    pc_en,                // PC Write Enable. Connected to stall from hazard
-    i_fsm_busyF,          // fsm busy from iCache
-    branch_match,         // did the branch match the flags (& there's a br instr)
-    vldF;                 // valid bit for noops
+   pc_en,                // PC Write Enable. From hzd. // TODO
+   i_fsm_busyF,          // fsm busy from iCache       // TODO
+   branch_match,         // did the branch match the flags (& there's a br instr)
+   vldF;                 // valid bit for noops        // TODO
   wire [15:0]
-    pc_curr,              // PC value that comes from pc reg
-    pc_nxt,               // PC value loaded into pc reg
-    pc_plus_2F,           // PC value plus 2
-    instrF,               // instruction out from iCache
-    branch_pcD;           // IATS      Next pc if there's a branch
+   pc_curr,              // PC value that comes from pc reg
+   pc_nxt,               // PC value loaded into pc reg
+   pc_plus_2F,           // PC value plus 2
+   instrF,               // instruction out from iCache
+   branch_pcD;           // IATS      Next pc if there's a branch
 
   // Determine next PC depending on if there's a branch
   assign pc_nxt = branch_match ? branch_pcD : pc_plus_2F;
@@ -36,20 +36,20 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   /////////////////////////////// D ////////////////////////////////////////
   // pipeline sigs and more
   wire
-   vldD;
+      vldD;
   wire [2:0]
-   br_codeD;               // IATS     also works for B instruction
+      br_codeD;               // IATS     also works for B instruction
   wire [3:0]
-   opcodeD,
-   rdD,
-   rsD,
-   rtD;
+      opcodeD,
+      rdD,
+      rsD,
+      rtD;
   wire [8:0]
-   br_offD;                // IATS
+      br_offD;                // IATS
   wire [15:0]
-   instrD,                 // IATS
-   immD,
-   pc_plus_2D;
+      instrD,                 // IATS
+      immD,                   // Could be shift or mem offset.
+      pc_plus_2D;
 
    // signals meant for control unit
    wire
@@ -57,7 +57,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       mem_to_regD,          // memory read to register
       mem_wrD,              // memory write
       alu_srcD,             // imm or register 2
-      reg_dstD,             // IATS    write to RT or RD
+      dst_reg_selD,         // IATS    write to RT(0) or RD(1)
       branchD;              // IATS    is this a branch operation
 
    // TODO instantiate control unit here
@@ -87,7 +87,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    wire [15:0]
       src_data_1D,
       src_data_2D,
-      reg_dst_dataW;
+      dst_reg_dataW;       // TODO
    registerfile reg(
       .clk(clk),
       .rst(rst),
@@ -95,17 +95,18 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .SrcReg2(rtD),
       .DstReg(dst_regW),
       .WriteReg(reg_wenW),
-      .DstData(reg_dst_dataW),
+      .DstData(dst_reg_dataW),
       .SrcData1(src_data_1D),
       .SrcData2(src_data_2D));
 
    // decode instruction
    assign opcodeD = instrD[15:12];
    assign rdD = instrD[11:8];
-   assign rsD = instrD[7:4];
+   assign rsD = (opcodeD == `LHB) | (opcodeD == `LLB) ? instrD[11:8] : instrD[7:4];
    assign rtD = opcodeD[3] ? instrD[11:8] : instrD[3:0];
+   // Remember to reference only the first 4 LSB bits if you want shift amount
    assign immD = opcodeD[1] ?
-            {{8{instrD[7]}}, instrD[7:0]} : {{12{instrD[3]}}, instrD[3:0]};
+            {{8{instrD[7]}}, instrD[7:0]} : {{12{1'b0}}, instrD[3:0]};
    assign br_codeD = instrD[11:9];
    assign br_offD = instrD[8:0];
 
@@ -120,7 +121,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    add16b br_pc(.a(b_off_extD), .b(pc_plus_2D), .cin(1'b0), .s(b_pcD), .cout());
 
    // For readability, want to get br_pc as well
-   assign br_pcD = src_data_1D;
+   // TODO src_data_1D is a reg value. Reg values need to be forwarded
+   assign br_pcD = src_data_1D;                       // TODO
 
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
@@ -132,23 +134,66 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// E ////////////////////////////////////////
-   // pipeline sigs
+   // sigs from the pipeline
    wire
     vldE;
    wire [3:0]
     opcodeE,               // IATS
-    rdE,
-    rsE,                   // IATS
-    rtE;                   // IATS
-   wire [8:0]
+    rdE,                   // IATS
+    rsE,
+    rtE,                   // IATS
+    dst_regE;              // either rt or rd
    wire [15:0]
-    immE,                  // IATS
+    src_data_1E,           // values from register
+    src_data_2E,
+    pc_plus_2E,
+    immE;                  // IATS
    // control signals that may also be pipelined
    wire
       reg_wrenE,
       mem_to_regE,
       mem_wrE,
-      reg_dstE,
+      alu_srcE,            // IATS
+      dst_reg_selE;        // IATS
+
+   // choose between rt and rd depending on ALU or mem operation
+   assign dst_regE = dst_reg_selE ? rdE : rtE;
+
+   // ALU input selection and output. Forwarded values here
+   wire [15:0]
+      fwd_AE,        // IATS     will be renamed as it goes to ALU
+      fwd_BE,        // IATS     renamed as it goes to pipeline
+      src_AE,        // IATS     input to ALU
+      src_BE,        // IATS     input to ALU
+      data_inE,      // What will be written to memory
+      alu_outE;      // output of ALU
+   wire [2:0]
+      flagE;         // flag register output
+   wire [1:0]
+      fwd_A_selE,    // IATS     Signal from hazard unit // TODO
+      fwd_B_selE;    // IATS     Signal from hazard unit // TODO
+
+   assign fwd_AE = fwd_A_selE == 2'b10 ? dst_reg_dataW :
+                   fwd_A_selE == 2'b01 ? alu_out_M :
+                   fwd_A_selE == 2'b00 ? src_data_1E : 16'hXXXX;
+
+   assign fwd_BE = fwd_B_selE == 2'b10 ? dst_reg_dataW :
+                   fwd_B_selE == 2'b01 ? alu_outM :
+                   fwd_B_selE == 2'b00 ? src_data_2E : 16'hXXXX;
+
+   assign data_inE = fwd_BE;
+   assign src_AE = fwd_AE;
+   assign src_BE = alu_srcE ? immE : fwd_BE;    // selects imm or reg values
+
+   // Create alu
+   alu_compute alu(
+      .input_A(src_AE),
+      .input_B(src_BE),
+      .out(alu_outE),
+      .flag(flagE));
+
+
+
 
 
    /////////////////////////////// E ////////////////////////////////////////

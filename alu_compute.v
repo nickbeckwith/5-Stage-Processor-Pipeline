@@ -1,11 +1,15 @@
 `include "alu_compute.vh"
 
-module alu_compute(input_A, input_B, offset, shift_imm, opcode, output_A,
-			output_B, flag);
-	input [15:0] input_A, input_B, offset;
-	input [3:0] opcode, shift_imm;
-	output [15:0] output_A, output_B;
-	output [2:0] flag;
+module alu_compute(input_A, input_B, opcode, out, flag);
+	input [3:0]
+		opcode;			// Couldn't figure out how to get this down to 3 sigs
+	input [15:0]
+		input_A,			// base addr, or first operand, or $(rd)
+		input_B;			// shift offset, mem imm, second operand
+	output [15:0]
+		out;
+	output [2:0]
+		flag;				// output from flag register
 
 	wire [15:0] addsub_o;
 	wire [2:0] addsub_f;
@@ -19,7 +23,7 @@ module alu_compute(input_A, input_B, offset, shift_imm, opcode, output_A,
 		.Z(addsub_f[0]));
 
 	wire [15:0] red_o;
-	RED RED_mod (input_A, input_B, red_o);
+	RED RED_mod(input_A, input_B, red_o);
 
 	wire [15:0] xor_o;
 	assign xor_o = input_A ^ input_B;
