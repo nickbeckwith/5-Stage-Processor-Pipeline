@@ -1,6 +1,7 @@
 `include "alu_compute.vh"
 
-module alu_compute(input_A, input_B, offset, shift_imm, opcode, output_A, output_B, flag);
+module alu_compute(input_A, input_B, offset, shift_imm, opcode, output_A,
+			output_B, flag);
 	input [15:0] input_A, input_B, offset;
 	input [3:0] opcode, shift_imm;
 	output [15:0] output_A, output_B;
