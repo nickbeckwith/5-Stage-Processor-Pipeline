@@ -11,12 +11,22 @@ module alu_compute(input_A, input_B, opcode, out, flag);
 	output [2:0]
 		flag;				// output from flag register
 
-	wire [15:0] addsub_o;
-	wire [2:0] addsub_f;
+	// Adder and subtracter is responsible for some arith and mem address calc
+	wire [15:0]
+		addsub_o;		// output of adder
+	wire [2:0]
+		addsub_f;		// output of flags
+	wire [15:0]
+		add_input_A,
+		add_input_B;
+	// if mem operation, need to make sure address is even
+	assign add_input_A = opcode[3] ? input_A & 16'hFFFE : input_A;
+	// Need to add 0 back from encoded offset
+	assign add_input_B = opcode[3] ? input_B >> 1 : input_B;
 	alu_adder ADDSUB(
 		.mode(opcode[0]),
-		.A(input_A),
-		.B(input_B),
+		.A(add_input_A),
+		.B(add_input_B),
 		.S(addsub_o),
 		.N(addsub_f[2]),
 		.V(addsub_f[1]),
@@ -34,43 +44,35 @@ module alu_compute(input_A, input_B, opcode, out, flag);
 		.Shift_Out(shift_o),
 		.Zero(shift_f),
 		.Shift_In(input_A),
-		.Shift_Val(shift_imm),
+		.Shift_Val(input_B[3:0]),
 		.Mode(opcode[1:0]));
 
 	wire [15:0] paddsb_o;
 	paddsb PADDSB(input_A, input_B, paddsb_o);
 
-	wire [15:0] rs_even, imm_shift;
-	assign rs_even = input_A & 16'b1111111111111110;
-	assign imm_shift = offset << 1;
-	add_16b MEMADD(.a(rs_even), .b(imm_shift), .cin(1'b0), .s(output_A), .cout());
-
 	wire [15:0] LLB, LHB;
-	assign LLB = {input_A[15:8], offset[7:0]};
-	assign LHB = {offset[7:0], input_A[7:0]};
+	assign LLB = {input_A[15:8], input_B[7:0]};
+	assign LHB = {input_B[7:0], input_A[7:0]};
 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
-	reg [15:0] output_B_im;
+	reg [15:0] out_reg;
 	always @* begin
 		casez (opcode)
-			`SW 			: output_B_im = input_B;
-			`LHB 			: output_B_im = LHB;
-			`LLB 			: output_B_im = LLB;
-			`ADD 			: output_B_im = addsub_o;
-			`SUB 			: output_B_im = addsub_o;
-			`RED 			: output_B_im = red_o;
-			`XOR 			: output_B_im = xor_o;
-			`SLL 			: output_B_im = shift_o;
-			`SRA 			: output_B_im = shift_o;
-			`ROR 			: output_B_im = shift_o;
-			`PADDSB 	: output_B_im = paddsb_o;
-			default: output_B_im = 16'h0000;
+			4'bz00z		: out_reg = addsub_o;	//add,sub,lw,sw
+			`PADDSB		: out_reg = paddsb_o;
+			4'bz1zz		: out_reg = shift_o;	 	// all shift ops
+			`RED			: out_reg = red_o;
+			`XOR			: out_reg = xor_o;
+			`LHB			: out_reg = LHB;
+			default 		: out_reg = LLB;			// LLB. and everything else.
 		endcase
 	end
-	assign output_B = output_B_im;
+	assign out = out_reg;
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
+
+	// flag register and determining flags
 	wire [2:0] flag_imm;
 	// flags. Flag register is write restricted depending on opcode
 	//0 = Z
