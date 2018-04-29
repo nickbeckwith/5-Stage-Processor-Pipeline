@@ -1,19 +1,19 @@
 `include "dff.v"
 `define IDLE 0
 `define WAIT 1
-module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
-                        wrt_mem, miss_address, memory_data, fsm_busy,
+module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_vld, read_req,
+                        wrt_mem, miss_addr, memory_data, fsm_busy,
                         write_data_array, write_tag_array, memory_address,
-						cache_address, pause);
+						cache_addr, pause);
   input
     clk, rst,
     wrt,                  // High when mem needs to be written. On case of hit, wrt makes write_data high.
-    miss_detected,        // active high when tag match logic detects a miss
-    memory_data_valid,    // active high indicates valid data returning on memory bus
-	pause,					// stops count sig
+    miss_detected,       // active high when tag match logic detects a miss
+    memory_data_vld,    // active high indicates valid data returning on memory bus
+	 pause,				         	// stops count sig
     wrt_mem;            // write signal to cache
   input [15:0]
-    miss_address,         // address that missed the cache
+    miss_addr,             // address that missed the cache
     memory_data;          // data returned by memory (after  delay)
   output
     read_req,             // Asks main memory for a read.
@@ -22,7 +22,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
     write_tag_array;      // write enable to cache tag array to write tag and valid bit once all words are
                           // filled in to data array
   output [15:0]
-	cache_address,		  // Determines cache address
+	 cache_addr,		         // Determines cache address
     memory_address;       // address to read from memory
 
 
@@ -35,10 +35,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   wire done;                   // When all blks are received
   wire reading;                // while sending requests for all 8 blocks
   wire incr_cnt;               // continues counting. Should only be on in WAIT
-  dff state_ff_0(.q(cnt[0]), .d(nxt_cnt[0]), .wen(incr_cnt), .clk(clk), .rst(rst));
-  dff state_ff_1(.q(cnt[1]), .d(nxt_cnt[1]), .wen(incr_cnt), .clk(clk), .rst(rst));
-  dff state_ff_2(.q(cnt[2]), .d(nxt_cnt[2]), .wen(incr_cnt), .clk(clk), .rst(rst));
-  dff state_ff_3(.q(cnt[3]), .d(nxt_cnt[3]), .wen(incr_cnt), .clk(clk), .rst(rst));
+  dff state_ff[3:0](.q(cnt), .d(nxt_cnt), .wen(incr_cnt), .clk(clk), .rst(rst));
+
   // reg versions of counter wires and assigning to their counterparts
   reg done_reg;
   reg reading_reg;
@@ -71,14 +69,12 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   end
   /////////////////////////// end of counter ///////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
-  
+
   //////////////////////////////////////////////////////////////////////////////
   ////////////////////////// counter for cache addr ////////////////////////////
   wire [3:0] blck_off, nxt_blck_off;		// state vars
-  dff fsm0(.q(blck_off[0]), .d(nxt_blck_off[0]), .wen(memory_data_valid), .clk(clk), .rst(rst));
-  dff fsm1(.q(blck_off[1]), .d(nxt_blck_off[1]), .wen(memory_data_valid), .clk(clk), .rst(rst));
-  dff fsm2(.q(blck_off[2]), .d(nxt_blck_off[2]), .wen(memory_data_valid), .clk(clk), .rst(rst));
-  dff fsm3(.q(blck_off[3]), .d(nxt_blck_off[3]), .wen(memory_data_valid), .clk(clk), .rst(rst));
+  dff fsm[3:0](.q(blck_off), .d(nxt_blck_off), .wen(memory_data_vld), .clk(clk), .rst(rst));
+
   // reg version of wires
   reg [3:0] nxt_blck_off_reg;
   assign nxt_blck_off = nxt_blck_off_reg;
@@ -97,13 +93,13 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
   end
   ///////////////////////////////// end /////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////
-  
+
   //////////////////////////////////////////////////////////////////////////////
   //////////////////////////////// FSM /////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
   // two states so we need only one DFF and a one bit state signal
   wire state, nxt_state;           // FSM relies on state and nxt_state sigs
-  dff state_ff(.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
+  dff state_ff[3:0](.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
   // list of reg signal version of outputs
   reg
     fsm_busy_reg,
@@ -114,15 +110,15 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
     incr_cnt_reg,
     wrt_mem_reg;
   reg [15:0]
-	cache_address_reg,
-    memory_address_reg;
+   cache_addr_reg,
+   memory_address_reg;
   // assigns reg to their wire counterparts
   assign fsm_busy = fsm_busy_reg;
   assign write_data_array = write_data_array_reg;
   assign write_tag_array = write_tag_array_reg;
   assign nxt_state = nxt_state_reg;
   assign memory_address = memory_address_reg;
-  assign cache_address = cache_address_reg;
+  assign cache_addr = cache_addr_reg;
   assign read_req = read_req_reg;
   assign incr_cnt = incr_cnt_reg;
   assign wrt_mem = wrt_mem_reg;
@@ -132,8 +128,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
       `IDLE : begin
         write_data_array_reg = miss_detected ? 1'b0 : wrt;
         write_tag_array_reg = 1'b0;
-		cache_address_reg = miss_detected ? {miss_address[15:4], blck_off} : miss_address;
-        memory_address_reg = miss_detected ? {miss_address[15:4], cnt} : miss_address;
+		  cache_addr_reg = miss_detected ? {miss_addr[15:4], blck_off} : miss_addr;
+        memory_address_reg = miss_detected ? {miss_addr[15:4], cnt} : miss_addr;
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
         incr_cnt_reg = 1'b0;
         read_req_reg = 1'b0;
@@ -141,10 +137,10 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
         nxt_state_reg = miss_detected ? `WAIT : `IDLE;
       end
       `WAIT : begin
-        write_data_array_reg = memory_data_valid ? 1'b1 : 1'b0;
+        write_data_array_reg = memory_data_vld ? 1'b1 : 1'b0;
         write_tag_array_reg = done ? 1'b1 : 1'b0;     // on transition
-		cache_address_reg = {miss_address[15:4], blck_off};
-        memory_address_reg = {miss_address[15:4], cnt[2:0], 1'b0};
+		  cache_addr_reg = {miss_addr[15:4], blck_off};
+        memory_address_reg = {miss_addr[15:4], cnt[2:0], 1'b0};
         fsm_busy_reg = 1'b1;      // isn't on transition so a valid write will occur
         incr_cnt_reg = pause ? 1'b0 : 1'b1;
         read_req_reg = reading;    // only read on the first 8.
@@ -154,7 +150,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_valid, read_req,
       default : begin     // shouldn't happen
         write_data_array_reg = 1'bx;
         write_tag_array_reg = 1'bx;
-		cache_address_reg = 16'hxxxx;
+		cache_addr_reg = 16'hxxxx;
         memory_address_reg = 16'hxxxx;
         fsm_busy_reg = 1'bx;
         incr_cnt_reg = 1'bx;

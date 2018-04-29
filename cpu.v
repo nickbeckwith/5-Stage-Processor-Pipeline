@@ -10,4 +10,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     pc_nxt;               // PC value loaded into pc reg
 
   PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
+
+
 endmodule

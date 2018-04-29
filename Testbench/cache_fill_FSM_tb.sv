@@ -4,9 +4,9 @@ module cache_fill_FSM_tb();
   logic
     clk, rst_n,
     miss_detected,        // active high when tag match logic detects a miss
-    memory_data_valid;    // active high indicates valid data returning on memory bus
+    memory_data_vld;    // active high indicates valid data returning on memory bus
   logic [15:0]
-    miss_address,         // address that missed the cache
+    miss_addr,         // address that missed the cache
     memory_data;          // data returned by memory (after  delay)
 
   // outputs
@@ -18,16 +18,16 @@ module cache_fill_FSM_tb();
   logic [15:0]
     memory_address;       // address to read from memory
 
-  cache_fill_FSM iDUT(clk, rst_n, miss_detected, miss_address, fsm_busy,
+  cache_fill_FSM iDUT(clk, rst_n, miss_detected, miss_addr, fsm_busy,
                           write_data_array, write_tag_array, memory_address,
-                          memory_data, memory_data_valid);
+                          memory_data, memory_data_vld);
 
   initial begin
     clk = 0;
     rst_n = 0;
     miss_detected = 0;
-    memory_data_valid = 0;
-    miss_address = 16'h0002;
+    memory_data_vld = 0;
+    miss_addr = 16'h0002;
     memory_data = 0;
     @(negedge clk);
     rst_n = 1;
@@ -49,18 +49,18 @@ module cache_fill_FSM_tb();
       $stop;
     end
     repeat(3) @(posedge clk);
-    memory_data_valid = 1;
+    memory_data_vld = 1;
     @(posedge clk);
-    memory_data_valid = 0;
+    memory_data_vld = 0;
     #2;
     if (memory_address != 16'h1) begin
       $display("Req address should be 1");
       $stop;
     end
     repeat(3) @(posedge clk);
-    memory_data_valid = 1;
+    memory_data_vld = 1;
     @(posedge clk);
-    memory_data_valid = 0;
+    memory_data_vld = 0;
 
 
   end
