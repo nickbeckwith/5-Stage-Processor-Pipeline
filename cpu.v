@@ -57,7 +57,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       mem_to_regD,          // memory read to register
       mem_wrD,              // memory write
       alu_srcD,             // imm or register 2
-      reg_dstD,             // which register to write to (mem or alu op reg)
+      reg_dstD,             // IATS    write to RT or RD
       branchD;              // IATS    is this a branch operation
 
    // TODO instantiate control unit here
@@ -69,7 +69,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    // Signals meant for checking if branch should be taken
    wire
-      cond_passD,             // IATS 1 if the flag reg meets the br conditions
+      cond_passD,              // IATS 1 if the flag reg meets the br conditions
       branch_matchD;           // cond match and branch
 
    // TODO Create flag_check module that outputs cond_passD
@@ -149,7 +149,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       mem_to_regE,
       mem_wrE,
       reg_dstE,
-      branchE;             // annihilated
+
+
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
 
