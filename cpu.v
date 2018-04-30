@@ -24,7 +24,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   assign pc_nxt = branch_match ? branch_pcD : pc_plus_2F;
 
   PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
-
+  /* the only valid instructions are ones that come from
+  instrF. Clearing an instruction creates an instructions
+  of itself but isn't valid. */
+  assign vldF = 1'b1;
   assign pc_out = pc_curr;          // readability
   assign instrF = main_mem_out;     // value from the main memory
 
