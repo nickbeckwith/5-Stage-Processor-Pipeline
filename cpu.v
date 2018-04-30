@@ -66,7 +66,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // Look here for what the signals are inspired from.
    /////////////////////////////
    //////////////////////////////
-
+   control_unit ControlUnit(.opcode(opcodeD),.reg_wren(reg_wrenD),.mem_to_reg(mem_to_regD),
+                            .mem_wr(mem_wrD),.alu_src(alu_srcD),.dst_reg_sel(dst_reg_selD),
+                            .branch(branchD));
    // Signals meant for checking if branch should be taken
    wire
       cond_passD,              // IATS 1 if the flag reg meets the br conditions
