@@ -38,7 +38,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   wire
       vldD;
   wire [2:0]
-      br_codeD;               // IATS     also works for B instruction
+      br_codeD,               // IATS     also works for B instruction
+      flagE;                  // flag register output
   wire [3:0]
       opcodeD,
       rdD,
@@ -51,7 +52,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       immD,                   // Could be shift or mem offset.
       pc_plus_2D;
 
-   // signals meant for control unit
+   // Control unit and signals
    wire
       reg_wrenD,            // write permissions to register
       mem_to_regD,          // memory read to register
@@ -59,29 +60,22 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       alu_srcD,             // imm or register 2
       dst_reg_selD,         // IATS    write to RT(0) or RD(1)
       branchD;              // IATS    is this a branch operation
+   control_unit ControlUnit(
+      .opcode(opcodeD),
+      .reg_wren(reg_wrenD),
+      .mem_to_reg(mem_to_regD),
+      .mem_wr(mem_wrD),
+      .alu_src(alu_srcD),
+      .dst_reg_sel(dst_reg_selD),
+      .branch(branchD));
 
-   // TODO instantiate control unit here
-   // TODO Finish control unit in control_unit.v
-   // https://github.com/DTV96Calibre/pipelined-mips
-   // Look here for what the signals are inspired from.
-   /////////////////////////////
-   //////////////////////////////
-   control_unit ControlUnit(.opcode(opcodeD),.reg_wren(reg_wrenD),.mem_to_reg(mem_to_regD),
-                            .mem_wr(mem_wrD),.alu_src(alu_srcD),.dst_reg_sel(dst_reg_selD),
-                            .branch(branchD));
    // Signals meant for checking if branch should be taken
    wire
       cond_passD,              // IATS 1 if the flag reg meets the br conditions
       branch_matchD;           // cond match and branch
+   flag_check Flag_Check(.C(br_codeD), .flag(flagE), .cond_passD(cond_passD));
 
-   // TODO Create flag_check module that outputs cond_passD
-   // might want to look in old Pc_control i think?
-   // Condition passD is 1 if the flag reg meets the conditions to branchD
-
-   flag_check Flag_Check(.C(br_codeD),.flag(flagE),.cond_passD(cond_passD));
-
-   /////////////////////////////
-   //////////////////////////////
+   // branch_matchD determines if branching will occur
    assign branch_matchD = branchD & cond_passD;
 
    // instantiate register and signals needed possibly from WB
@@ -92,8 +86,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    wire [15:0]
       src_data_1D,
       src_data_2D,
-      dst_reg_dataW;       // TODO
-   registerfile reg(
+      dst_reg_dataW;
+   registerfile register(
       .clk(clk),
       .rst(rst),
       .SrcReg1(rsD),
@@ -132,7 +126,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
    assign branch_pcD = opcodeD[0] ? br_pcD : b_pcD;
-
    /////////////////////////////// D ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
 
@@ -172,8 +165,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       src_BE,        // IATS     input to ALU
       data_inE,      // What will be written to memory
       alu_outE;      // output of ALU
-   wire [2:0]
-      flagE;         // flag register output
    wire [1:0]
       fwd_A_selE,    // IATS     Signal from hazard unit // TODO
       fwd_B_selE;    // IATS     Signal from hazard unit // TODO
@@ -196,23 +187,74 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .input_B(src_BE),
       .out(alu_outE),
       .flag(flagE));
-
-
-
-
-
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
 
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// M ////////////////////////////////////////
+   // pipeline values coming in
+   wire
+      vldM,
+      reg_wrenM,
+      mem_to_regM,
+      mem_wrM;       // IATS
+   wire [3:0]
+      dst_regM;      // destination register name still
+   wire [15:0]
+      alu_outM,      // this can also be an address
+      data_inM;      // IATS data to data memory
 
+   // hazard signal needed
+   wire
+      d_fsm_busyM;   // FSM busy from data cache fsm
+
+   // output from memory
+   wire [15:0]
+      main_mem_outM;
+
+   // pipeline time
+   wire [54:0] mem_wb_in, mem_wb_out;
+   assign mem_wb_in = {
+      vldM,
+      reg_wrenM,
+      mem_to_regM,
+      dst_regM,
+      alu_outM,
+      data_inM,
+      main_mem_outM
+   };
    /////////////////////////////// M ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
-
+   // Mem/WB pipeline register
+   pipeline_reg #(55) mem_wb( // 55 comes from the size of concatanation
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),       // usually a flush signal
+      .wren(1'b1),      // usually a stall signal
+      .d(mem_wb_in),
+      .q(mem_wb_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// W ////////////////////////////////////////
+   // pipeline and assigning
+   wire
+      vldW,
+      reg_wrenW,     // IATS
+      mem_to_regW;   // IATS
+   wire [15:0]
+      main_mem_outW, // IATS
+      alu_outW;
+   assign {          // remember to change these to W when copying over.
+         vldW,
+         reg_wrenW,
+         mem_to_regW,
+         dst_regW,
+         alu_outW,
+         data_inW,
+         main_mem_outW
+      } = mem_wb_out;
 
+   // choose between memory and alu out
+   assign dst_reg_dataW = mem_to_regW ? main_mem_outW : alu_outW;
    /////////////////////////////// W ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
 
@@ -221,15 +263,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    memory memory(
       .clk(clk),
       .rst(rst),
-      .d_wrt_en(),
-      .data_in(),
+      .d_wrt_en(mem_wrM),
+      .data_in(data_inM),
       .i_addr(pc_curr),
-      .d_addr(),
+      .d_addr(alu_outM),
       .i_fsm_busy(i_fsm_busyF),
-      .d_fsm_busy(),
-      .d_mem_en(),
+      .d_fsm_busy(d_fsm_busyM),
+      .d_mem_en(mem_to_regM | mem_wrM),
       .instr_out(instrF),
-      .data_out(main_mem_out);
-      )
+      .data_out(main_mem_outM));
 
 endmodule

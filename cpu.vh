@@ -3,17 +3,16 @@
 
 `include "add_16b.v"
 `include "PC_register.v"
-`include "imemory.v"
 `include "if_id.v"
+`include "pipeline_reg.v"
 `include "hazard_detection.v"
 `include "registerfile.v"
 `include "id_ex.v"
-`include "fwd_unit.v"
-`include "PC_control.v"
+`include "control_unit.v"
+`include "flag_check.v"
 `include "alu_compute.v"
 `include "flag_reg.v"
 `include "ex_mem.v"
-`include "dmemory.v"
 `include "mem_wb.v"
 
 `define ADD     4'b0000

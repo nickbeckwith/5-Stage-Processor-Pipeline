@@ -2,7 +2,7 @@ module flag_check(input[2:0] C, input[2:0] flag, output cond_passD);
     wire N, V, Z;
     assign {N, V, Z} = flag;
     reg willBranch;
-    always @(C, F) begin
+    always @(*) begin
         case (C)
             3'b000: willBranch = ~Z;
             3'b001: willBranch = Z;
