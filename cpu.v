@@ -32,9 +32,25 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   assign instrF = main_mem_out;     // value from the main memory
 
   add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
+
+  //Pipeline Time
+  wire [32:0] if_id_in, if_id_out;
+  assign if_id_in = {
+      vldF,
+      instrF
+      pc_plus_2f,
+  }
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-
+   // ID/ED pipelineregisteer
+   pipeline_reg #(33) if_id(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
+      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .d(if_id_in),
+      .q(if_id_out)
+   );
   //////////////////////////////////////////////////////////////////////////
   /////////////////////////////// D ////////////////////////////////////////
   // pipeline sigs and more
@@ -54,6 +70,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       instrD,                 // IATS
       immD,                   // Could be shift or mem offset.
       pc_plus_2D;
+
+   //Assign Pipeline Values
+   assign {
+      vldD,
+      instrD,
+      pc_plus_2D
+   } = if_id_out;
 
    // Control unit and signals
    wire
@@ -129,10 +152,36 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
    assign branch_pcD = opcodeD[0] ? br_pcD : b_pcD;
+
+
+   //Pipeline Time
+   wire [75:0] id_ex_in, id_ex_out;
+   assign id_ex_in = {
+      vldD,
+      reg_wrenD,
+      mem_to_regD,
+      mem_wrD,
+      opcodeD,
+      alu_srcD,
+      dst_reg_selD,
+      src_data_1D,
+      src_data_2D,
+      rdD,
+      rsD,
+      rtD,
+      pc_plus_2D,
+      immD
+   }; 
    /////////////////////////////// D ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
-
-
+   // ID/EX pipelineregisteer
+   pipeline_reg #(76) id_ex(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
+      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .d(id_ex_in),
+      .q(id_ex_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// E ////////////////////////////////////////
    // sigs from the pipeline
@@ -156,6 +205,24 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       mem_wrE,
       alu_srcE,            // IATS
       dst_reg_selE;        // IATS
+  
+   //Assign values from pipeline
+   assign {
+      vldE,
+      reg_wrenE,
+      mem_to_regE,
+      mem_wrE,
+      opcodeE,
+      alu_srcE,
+      dst_reg_selE,
+      src_data_1E,
+      src_data2E,
+      rdE,
+      rsE,
+      rtE,
+      pc_plus_2E,
+      immE
+   } = id_ex_out;
 
    // choose between rt and rd depending on ALU or mem operation
    assign dst_regE = dst_reg_selE ? rdE : rtE;
@@ -190,9 +257,28 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .input_B(src_BE),
       .out(alu_outE),
       .flag(flagE));
+
+   //Pipeline Time
+   wire [39:0] ex_mem_in, ex_mem_out;
+   assign mem_wb_in = {
+      vldE,
+      reg_wrenE,
+      mem_to_regE,
+      mem_wrE,
+      dst_regE,
+      alu_outE,
+      data_inE,
+   };
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
-
+   // EX/MEM pipeline registeer
+   pipeline_reg #(40) ex_mem(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
+      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .d(ex_mem_in),
+      .q(ex_mem_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// M ////////////////////////////////////////
    // pipeline values coming in
@@ -207,6 +293,16 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       alu_outM,      // this can also be an address
       data_inM;      // IATS data to data memory
 
+   //Assign values from pipeline
+   assign {
+      vldM,
+      reg_wrenM,
+      mem_to_regM,
+      mem_wrm,
+      dst_regM,
+      alu_outM,
+      data_inM
+   } = ex_mem_out;
    // hazard signal needed
    wire
       d_fsm_busyM;   // FSM busy from data cache fsm
