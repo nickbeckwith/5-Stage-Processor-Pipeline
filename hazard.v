@@ -29,6 +29,16 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
       forward_A_selE,      // Choosing src 1 of ALU, Default to 00
       forward_B_selE;      // Choosing src 2 of ALU, Default to 00
 
+      /*If forwarding is needed for branch instruction:
+            11 - dst reg in write back stage needs to be forwarded
+            10 - dst reg in mem stage needs to be forwarded
+            01 - dst reg in ex stage needs to be forwarded
+            00 - forwarding not needed
+      */
+      assign forwardD = (branch_matchD & reg_wrenW & (rsD==dst_regW)) ? 2'b11:
+                        (branch_matchD & reg_wrenM & (rsD==dst_regM)) ? 2'b10:
+                        (branch_matchD & reg_wrenE & (rsD==dst_regE)) ? 2'b01:
+                        2'b0;
 
 	assign flushD = branch_matchD;
 
