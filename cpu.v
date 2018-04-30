@@ -77,6 +77,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // TODO Create flag_check module that outputs cond_passD
    // might want to look in old Pc_control i think?
    // Condition passD is 1 if the flag reg meets the conditions to branchD
+
+   flag_check Flag_Check(.C(br_codeD),.flag(flagE),.cond_passD(cond_passD));
+
    /////////////////////////////
    //////////////////////////////
    assign branch_matchD = branchD & cond_passD;
