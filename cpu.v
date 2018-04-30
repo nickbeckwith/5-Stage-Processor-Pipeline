@@ -8,22 +8,26 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////Hazard Unit/////////////////////////////////
 
+  ///////////////// wires fir HZRD//////////////////////////
+  wire [1:0] forward_B_selE, forward_A_selE, forwardD;
+  wire  stallF, stallD, flushD;
+
   hazard HZRD (
-    .branch_matchD(),
-    .mem_to_regE(),
-    .mem_to_regM(),
-    .reg_wrenE(),
-    .reg_wrenM(),
-    .reg_wrenW(),
-    .dst_regE(),
-    .dst_regM(),
-    .dst_regW(),
-    .stallF(),
-    .stallD(),
-    .flushD(),
-    .forwardD(),
-    .forward_A_selE(),
-    .forward_B_selE()
+    .branch_matchD(branch_matchD),
+    .mem_to_regE(mem_to_regE),
+    .mem_to_regM(mem_to_regM),
+    .reg_wrenE(reg_wrenE),
+    .reg_wrenM(reg_wrenM),
+    .reg_wrenW(reg_wrenM),
+    .dst_regE(dst_regE),
+    .dst_regM(dst_regM),
+    .dst_regW(dst_regW),
+    .stallF(stallF),
+    .stallD(stallD),
+    .flushD(flushD),
+    .forwardD(forwardD),
+    .forward_A_selE(forward_A_selE),
+    .forward_B_selE(forward_B_selE)
   );
 
   //////////////////////////////Hazard Unit/////////////////////////////////
@@ -194,7 +198,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       rtD,
       pc_plus_2D,
       immD
-   }; 
+   };
    /////////////////////////////// D ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
    // ID/EX pipelineregisteer
@@ -228,7 +232,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       mem_wrE,
       alu_srcE,            // IATS
       dst_reg_selE;        // IATS
-  
+
    //Assign values from pipeline
    assign {
       vldE,
