@@ -11,6 +11,7 @@ module control_unit(opcode, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
       branch;           // Is this a branch operation?
 
       assign branch = (opcode ==`B | opcode ==`BR) ? 1 : 0;
+
       assign mem_to_reg = (opcode ==`LW) ? 1 : 0;
 
       assign mem_wr = (opcode == `SW) ? 1 : 0;
@@ -19,8 +20,6 @@ module control_unit(opcode, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
                         (opcode == `ROR) | (opcode == `SLL) |
                         (opcode == `SRA)) ? 1 : 0 ;
 
-      assign reg_wren = (opcode == `SW | opcode == `BR | opcode == `B |
-                         opcode == `HLT) ? 0 : 1;
 
       assign dst_reg_sel = ((opcode == `LW)) ? 0 : 1;
 
