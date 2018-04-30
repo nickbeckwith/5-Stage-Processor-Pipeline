@@ -9,7 +9,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////// F ///////////////////////////////////////
   wire
-   pc_en,                // PC Write Enable. From hzd. // TODO
+   pc_en,                // PC Write Enable. From hzd. // TODO AKA StallF
    i_fsm_busyF,          // fsm busy from iCache       // TODO
    branch_match,         // did the branch match the flags (& there's a br instr)
    vldF;                 // valid bit for noops        // TODO
@@ -43,8 +43,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(33) if_id(
       .clk(clk),
       .rst(rst),
-      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
-      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .clr(/*TODO*/),	// branch_match | vldF
+      .wren(/*TODO*/),	// StallD
       .d(if_id_in),
       .q(if_id_out)
    );
@@ -175,8 +175,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(76) id_ex(
       .clk(clk),
       .rst(rst),
-      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
-      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .clr(/*TODO*/),	// FlushE | VldD
+      .wren(1'b1),	// Always enabled, Hzrds fixed by forwarding
       .d(id_ex_in),
       .q(id_ex_out));
    //////////////////////////////////////////////////////////////////////////
@@ -272,8 +272,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(40) ex_mem(
       .clk(clk),
       .rst(rst),
-      .clr(1'b0),	//TODO Set to Global Reset (Don't Use For Anything Else)
-      .wren(1'b1),	//TODO Stall Pipeline Signal
+      .clr(/*TODO*/),	// VldE
+      .wren(1'b1),	// Always High, Hzrds fixed with forwarding
       .d(ex_mem_in),
       .q(ex_mem_out));
    //////////////////////////////////////////////////////////////////////////
@@ -325,8 +325,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(55) mem_wb( // 55 comes from the size of concatanation
       .clk(clk),
       .rst(rst),
-      .clr(1'b0),       // usually a flush signal
-      .wren(1'b1),      // usually a stall signal
+      .clr(/*TODO*/),   // VldM
+      .wren(1'b1),      // Always High, No Data Hzrds to worry about
       .d(mem_wb_in),
       .q(mem_wb_out));
    //////////////////////////////////////////////////////////////////////////
