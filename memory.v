@@ -9,15 +9,15 @@ module memory(clk, rst, d_wrt_en, data_in, i_addr, d_addr,
    input
       clk,
       rst,
-      d_wrt_en;         // data mem write
+      d_wrt_en,         // data mem write
+      d_mem_en;         // enables data memory for reads
    input [15:0]
       data_in,          // data from data memory in
       i_addr,           // address to instruction wanted. (PC)
       d_addr;           // address to data wanted
    output
       i_fsm_busy,       // instruction cache busy
-      d_fsm_busy,       // data cache busy
-      d_mem_en;         // enables data memory for reads
+      d_fsm_busy;       // data cache busy
    output [15:0]
       instr_out,        // instruction from icache
       data_out;         // data from data cache

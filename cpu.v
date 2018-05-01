@@ -206,7 +206,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    // create br_off_ext and br_pc as above
    assign b_off_extD = {{7{b_offD[8]}}, b_offD} << 1;
-   add16b br_pc(.a(b_off_extD), .b(pc_plus_2D), .cin(1'b0), .s(b_pcD), .cout());
+   add_16b br_pc(.a(b_off_extD), .b(pc_plus_2D), .cin(1'b0), .s(b_pcD), .cout());
 
    // For readability, want to get br_pc as well
    // src_data_1D is a reg value. Reg values need to be forwarded
