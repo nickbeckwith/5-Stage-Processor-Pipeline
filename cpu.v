@@ -192,12 +192,11 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       opcodeD,
       alu_srcD,
       dst_reg_selD,
-      src_data_1D,
-      src_data_2D,
-      rdD,
+      (opcodeE == `PCS) ? pc_plus_2D : src_data_1D,   // in case of PCS instruction
+      src_data_2D,                                    // we want to get pc+2 into the
+      rdD,                                            // reg wr data path
       rsD,
       rtD,
-      pc_plus_2D,
       immD
    };
    /////////////////////////////// D ////////////////////////////////////////
@@ -224,7 +223,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    wire [15:0]
     src_data_1E,           // values from register
     src_data_2E,
-    pc_plus_2E,
     immE;                  // IATS
    // control signals that may also be pipelined
    wire
@@ -248,7 +246,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       rdE,
       rsE,
       rtE,
-      pc_plus_2E,
       immE
    } = id_ex_out;
 
@@ -264,8 +261,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       data_inE,      // What will be written to memory
       alu_outE;      // output of ALU
    wire [1:0]
-      fwd_A_selE,    // IATS     Signal from hazard unit // TODO
-      fwd_B_selE;    // IATS     Signal from hazard unit // TODO
+      fwd_A_selE,    // IATS     Signal from hazard unit
+      fwd_B_selE;    // IATS     Signal from hazard unit
 
    assign fwd_AE = fwd_A_selE == 2'b10 ? dst_reg_dataW :
                    fwd_A_selE == 2'b01 ? alu_out_M :
@@ -275,8 +272,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
                    fwd_B_selE == 2'b01 ? alu_outM :
                    fwd_B_selE == 2'b00 ? src_data_2E : 16'hXXXX;
 
-   assign data_inE = fwd_BE;
-   assign src_AE = (opcodeE == `PCS) ? pc_plus_2E : fwd_AE;
+   assign data_inE = fwd_BE;                    // requested data to wr to mem
+   assign src_AE = fwd_AE;
    assign src_BE = alu_srcE ? immE : fwd_BE;    // selects imm or reg values
 
    // Create alu
