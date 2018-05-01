@@ -275,7 +275,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
                    fwd_B_selE == 2'b00 ? src_data_2E : 16'hXXXX;
 
    assign data_inE = fwd_BE;
-   assign src_AE = fwd_AE;
+   assign src_AE = (opcodeE == `PCS) ? pc_plus_2E : fwd_AE;
    assign src_BE = alu_srcE ? immE : fwd_BE;    // selects imm or reg values
 
    // Create alu

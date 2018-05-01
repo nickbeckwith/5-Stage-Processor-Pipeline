@@ -59,6 +59,7 @@ module alu_compute(input_A, input_B, opcode, out, flag);
 	reg [15:0] out_reg;
 	always @* begin
 		casez (opcode)
+			`PCS		: out_reg = input_A;
 			4'bz00z		: out_reg = addsub_o;	//add,sub,lw,sw
 			`PADDSB		: out_reg = paddsb_o;
 			4'bz1zz		: out_reg = shift_o;	 	// all shift ops
