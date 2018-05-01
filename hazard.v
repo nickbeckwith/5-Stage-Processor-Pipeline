@@ -1,5 +1,5 @@
 module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
-   reg_wrenM, dst_regM, reg_wrenW, dst_regW, rsD, rsE, rtE, stallF, stallD,
+   reg_wrenM, dst_regM, reg_wrenW, dst_regW, rsD, rtD, rsE, rtE, stallF, stallD,
    flushD, forwardD, forward_A_selE, forward_B_selE);
 
    input
@@ -14,6 +14,7 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
       dst_regM,            // (What register should be fwded)
       dst_regW,
       rsD,
+      rtD,
       rsE,
       rtE;
    output
@@ -28,17 +29,16 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
       forward_A_selE,      // Choosing src 1 of ALU, Default to 00
       forward_B_selE;      // Choosing src 2 of ALU, Default to 00
 
-      /*If forwarding is needed for branch instruction:
-            11 - dst reg in write back stage needs to be forwarded
-            10 - dst reg in mem stage needs to be forwarded
-            01 - dst reg in ex stage needs to be forwarded
-            00 - forwarding not needed
-      */
+   /*If forwarding is needed for branch instruction:
+         11 - dst reg in write back stage needs to be forwarded
+         10 - dst reg in mem stage needs to be forwarded
+         01 - dst reg in ex stage needs to be forwarded
+         00 - forwarding not needed
+   */
    assign forwardD =
-                     (reg_wrenE & (rsD==dst_regE)) ? 2'b01:
-                     (reg_wrenM & (rsD==dst_regM)) ? 2'b10:
-                     (reg_wrenW & (rsD==dst_regW)) ? 2'b11:
-                     2'b0;
+                     (reg_wrenE & (rsD == dst_regE)) ? 2'b01:
+                     (reg_wrenM & (rsD == dst_regM)) ? 2'b10:
+                     (reg_wrenW & (rsD == dst_regW)) ? 2'b11: 2'b0;
 
 	assign flushD = branch_matchD;
 
@@ -73,7 +73,7 @@ if (ID/EX.MemRead & ((ID/EX.Rt == IF/ID.Rs) | (ID/EX.Rt == IF/ID.Rt))) Stall Pip
                           // is stalled on both ALU and branch depndency
    wire stall_frm_M;      // mem load is in mem stage while dependent is in decode
                           // is stalled only on branch dependency
-   assign stall_frm_E = mem_to_regE & ((dst_regE == rsD)) | (dst_regE == rtD));
+   assign stall_frm_E = mem_to_regE & ((dst_regE == rsD) | (dst_regE == rtD));
    assign stall_frm_M = mem_to_regM & (dst_regM == rsD);
    assign stall_pipeline = stall_frm_E | stall_frm_M;
 	assign stallF = stall_pipeline;

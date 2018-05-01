@@ -23,6 +23,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     .dst_regM(dst_regM),
     .dst_regW(dst_regW),
     .rsD(rsD),
+    .rtD(rtD),
     .rsE(rsE),
     .rtE(rtE),
     .stallF(stallF),
@@ -126,14 +127,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .dst_reg_sel(dst_reg_selD),
       .branch(branchD)
    );
-   // Signals meant for checking if branch should be taken
-   wire
-      cond_passD,              // IATS 1 if the flag reg meets the br conditions
-      branch_matchD;           // cond match and branch
-   flag_check Flag_Check(.C(br_codeD), .flag(flagE), .cond_passD(cond_passD));
-
-   // branch_matchD determines if branching will occur
-   assign branch_matchD = branchD & cond_passD;
 
    // instantiate register and signals needed possibly from WB
    wire
@@ -172,18 +165,30 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       b_pcD,                 // IATS      = PC + 2 + (br_offD << 1). assumes br
       br_pcD;                // IATS      = $(RS)
 
+   // Signals meant for checking if branch should be taken
+   wire
+      cond_passD,              // IATS 1 if the flag reg meets the br conditions
+      branch_matchD;           // cond match and branch
+   flag_check Flag_Check(.C(br_codeD), .flag(flagE), .cond_passD(cond_passD));
+
+   // branch_matchD determines if branching will occur
+   assign branch_matchD = branchD & cond_passD;
+
    // create br_off_ext and br_pc as above
    assign b_off_extD = {{7{b_offD[8]}}, b_offD} << 1;
    add16b br_pc(.a(b_off_extD), .b(pc_plus_2D), .cin(1'b0), .s(b_pcD), .cout());
 
    // For readability, want to get br_pc as well
-   // TODO src_data_1D is a reg value. Reg values need to be forwarded
-   assign br_pcD = src_data_1D;                       // TODO
+   // src_data_1D is a reg value. Reg values need to be forwarded
+   assign br_pcD =
+                     forwardD == 2'b00 ? src_data_1D :
+                     forwardD == 2'b01 ? alu_outE :
+                     forwardD == 2'b10 ? alu_outM :
+                     forwardD == 2'b11 ? dst_reg_dataW;
 
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
    assign branch_pcD = opcodeD[0] ? br_pcD : b_pcD;
-
 
    //Pipeline Time
    wire [75:0] id_ex_in, id_ex_out;
