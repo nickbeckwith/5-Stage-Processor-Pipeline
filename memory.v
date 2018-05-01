@@ -38,17 +38,14 @@ module memory(clk, rst, d_wrt_en, data_in, i_addr, d_addr,
       i_read_req,
       i_wrt_mem;
    wire [15:0]
-      i_addr_in,
       i_miss_addr;
 
    // dCache and its wires
    wire
-      d_wrt_en,
       d_data_vld,
       d_read_req,
       d_wrt_mem;
    wire [15:0]
-      d_addr_in,
       d_miss_addr;
 
    iCache iCache(

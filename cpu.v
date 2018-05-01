@@ -12,9 +12,9 @@ assign rst = ~rst_n;
   //////////////////////////////Hazard Unit/////////////////////////////////
   ///////////////// wires for HZRD//////////////////////////
   wire [1:0]
-   forward_B_selE,
-   forward_A_selE,
-   forwardD;
+   fwd_B_selE,
+   fwd_A_selE,
+   fwdD;
   wire
    stallF,
    stallD,
@@ -57,9 +57,9 @@ assign rst = ~rst_n;
     .stallD(stallD),
     .stallE(stallE),
     .flushD(flushD),
-    .forwardD(forwardD),
-    .forward_A_selE(forward_A_selE),
-    .forward_B_selE(forward_B_selE)
+    .forwardD(fwdD),
+    .forward_A_selE(fwd_A_selE),
+    .forward_B_selE(fwd_B_selE)
   );
   //////////////////////////////Hazard Unit/////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,6 @@ assign rst = ~rst_n;
   //////////////////////////////// F ///////////////////////////////////////
   wire
    pc_en,                // PC Write Enable. From hzd. AKA StallF
-   branch_match,         // did the branch match the flags (& there's a br instr)
    haltF,                 // halt signal makes pc_nxt = pc_curr
    vldF;                 // valid bit for noops
   wire [15:0]
@@ -82,7 +81,7 @@ assign rst = ~rst_n;
   // Determine next PC depending on if there's a branch
   // If there's a halt, branch takes priority
   assign pc_nxt =
-                  branch_match ? branch_pcD :
+                  branch_matchD ? branch_pcD :
                   haltF ? pc_curr : pc_plus_2F;
 
   assign pc_en = ~(stallF);
@@ -165,7 +164,7 @@ assign rst = ~rst_n;
 
    // instantiate register and signals needed possibly from WB
    wire
-      reg_wenW;
+      reg_wrenW;
    wire [15:0]
       src_data_1D,
       src_data_2D,
@@ -176,7 +175,7 @@ assign rst = ~rst_n;
       .SrcReg1(rsD),
       .SrcReg2(rtD),
       .DstReg(dst_regW),
-      .WriteReg(reg_wenW),
+      .WriteReg(reg_wrenW),
       .DstData(dst_reg_dataW),
       .SrcData1(src_data_1D),
       .SrcData2(src_data_2D));
@@ -213,9 +212,9 @@ assign rst = ~rst_n;
    // For readability, want to get br_pc as well
    // src_data_1D is a reg value. Reg values need to be forwarded
    assign br_pcD =
-                     forwardD == 2'b00 ? src_data_1D :
-                     forwardD == 2'b01 ? alu_outE :
-                     forwardD == 2'b10 ? alu_outM : dst_reg_dataW;
+                     fwdD == 2'b00 ? src_data_1D :
+                     fwdD == 2'b01 ? alu_outE :
+                     fwdD == 2'b10 ? alu_outM : dst_reg_dataW;
 
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
@@ -258,8 +257,8 @@ assign rst = ~rst_n;
    wire [3:0]
     rdE;                   // IATS
    wire [15:0]
-    src_data_1E,           // values from register
-    src_data_2E,
+    src_data_1E,           		// values from register
+	src_data_2E,
     immE;                  // IATS
    // control signals that may also be pipelined
    wire
@@ -278,7 +277,7 @@ assign rst = ~rst_n;
       alu_srcE,
       dst_reg_selE,
       src_data_1E,
-      src_data2E,
+      src_data_2E,
       rdE,
       rsE,
       rtE,
@@ -295,9 +294,6 @@ assign rst = ~rst_n;
       src_AE,        // IATS     input to ALU
       src_BE,        // IATS     input to ALU
       data_inE;      // What will be written to memory
-   wire [1:0]
-      fwd_A_selE,    // IATS     Signal from hazard unit
-      fwd_B_selE;    // IATS     Signal from hazard unit
 
    assign fwd_AE = fwd_A_selE == 2'b10 ? dst_reg_dataW :
                    fwd_A_selE == 2'b01 ? alu_outM :
@@ -358,7 +354,7 @@ assign rst = ~rst_n;
       haltM,
       reg_wrenM,
       mem_to_regM,
-      mem_wrm,
+      mem_wrM,
       dst_regM,
       alu_outM,
       data_inM
@@ -391,7 +387,6 @@ assign rst = ~rst_n;
    wire
       vldW,
       haltW,
-      reg_wrenW,     // IATS
       mem_to_regW;   // IATS
    wire [15:0]
       main_mem_outW, // IATS
