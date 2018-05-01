@@ -81,7 +81,7 @@ if (ID/EX.MemRead & ((ID/EX.Rt == IF/ID.Rs) | (ID/EX.Rt == IF/ID.Rt))) Stall Pip
    assign stall_frm_E = mem_to_regE & ((dst_regE == rsD) | (dst_regE == rtD));
    assign stall_frm_M = mem_to_regM & (dst_regM == rsD);
    assign stall_pipeline = stall_frm_E | stall_frm_M | d_fsm_busy;
-	assign stallF = stall_pipeline;
+	assign stallF = stall_pipeline | i_fsm_busy;
 	assign stallD = stall_pipeline;
    assign stallE = d_fsm_busy;
 
