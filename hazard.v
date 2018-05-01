@@ -42,7 +42,6 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
 
 	assign flushD = branch_matchD;
 
-/*TODO Logic For forwardD*/
 
 /* EX Hazard
 if (EX/MEM.RegWrite & (EX/MEM.Rd != 0) & (EX/MEM.Rd == ID/EX.RS)) Forward from EX/MEM to ALU_IN_A
@@ -60,8 +59,8 @@ if (MEM/WB.RegWrite & (MEM/WB.Rd != 0) & (MEM/WB.Rd == ID/EX.RT)) Forward from M
 	assign fwdB_mem_wb = reg_wrenW & ~(dst_regW == 4'b0000) & (dst_regW == rtE); //When High forward B_selE = 10
 
 
-	assign forward_A_selE = fwdA_mem_wb ? 2'b10 : fwd_A_ex_mem ? 2'b01 : 2'b00;
-	assign forward_B_selE = fwdB_mem_wb ? 2'b10 : fwd_A_ex_mem ? 2'b01 : 2'b00;
+	assign forward_A_selE = fwdA_ex_mem ? 2'b01 : fwdA_mem_wb ? 2'b10 : 2'b00;
+	assign forward_B_selE = fwdB_ex_mem ? 2'b01 : fwdB_mem_wb ? 2'b10 : 2'b00;
 
 /*
 if (ID/EX.MemRead & ((ID/EX.Rt == IF/ID.Rs) | (ID/EX.Rt == IF/ID.Rt))) Stall Pipeline
