@@ -8,9 +8,29 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////Hazard Unit/////////////////////////////////
 
-  ///////////////// wires fir HZRD//////////////////////////
-  wire [1:0] forward_B_selE, forward_A_selE, forwardD;
-  wire  stallF, stallD, flushD;
+  ///////////////// wires for HZRD//////////////////////////
+  wire [1:0]
+   forward_B_selE,
+   forward_A_selE,
+   forwardD;
+  wire
+   stallF,
+   stallD,
+   flushD,
+   branch_matchD,     // cond match and branch
+   reg_wrenE,
+   mem_to_regE,
+   reg_wrenM,
+   mem_to_regM;
+  wire [3:0]
+   rdD,
+   rsD,
+   rtD,
+   dst_regW,
+   rsE,
+   rtE,                   // IATS
+   dst_regE,              // either rt or rd
+   dst_regM;      // destination register name still
 
   hazard HZRD (
     .branch_matchD(branch_matchD),
@@ -33,17 +53,17 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     .forward_A_selE(forward_A_selE),
     .forward_B_selE(forward_B_selE)
   );
-
   //////////////////////////////Hazard Unit/////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////// F ///////////////////////////////////////
   wire
-   pc_en,                // PC Write Enable. From hzd. // TODO AKA StallF
-   i_fsm_busyF,          // fsm busy from iCache       // TODO
+   pc_en,                // PC Write Enable. From hzd. AKA StallF
+   i_fsm_busyF,          // fsm busy from iCache
    branch_match,         // did the branch match the flags (& there's a br instr)
-   vldF;                 // valid bit for noops        // TODO
+   hlt,                  // halt signal makes pc_nxt = pc_curr
+   vldF;                 // valid bit for noops
   wire [15:0]
    pc_curr,              // PC value that comes from pc reg
    pc_nxt,               // PC value loaded into pc reg
@@ -52,7 +72,10 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    branch_pcD;           // IATS      Next pc if there's a branch
 
   // Determine next PC depending on if there's a branch
-  assign pc_nxt = branch_match ? branch_pcD : pc_plus_2F;
+  // If there's a halt, branch takes priority
+  assign pc_nxt =
+                  branch_match ? branch_pcD :
+                  hlt ? pc_curr : pc_plus_2F;
 
   assign pc_en = ~(stallF);
   PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
@@ -69,9 +92,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   wire [32:0] if_id_in, if_id_out;
   assign if_id_in = {
       vldF,
-      instrF
-      pc_plus_2f,
-  }
+      instrF,
+      pc_plus_2f
+  };
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
    // ID/ED pipelineregisteer
@@ -92,10 +115,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       br_codeD,               // IATS     also works for B instruction
       flagE;                  // flag register output
   wire [3:0]
-      opcodeD,
-      rdD,
-      rsD,
-      rtD;
+      opcodeD;
   wire [8:0]
       br_offD;                // IATS
   wire [15:0]
@@ -131,8 +151,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // instantiate register and signals needed possibly from WB
    wire
       reg_wenW;
-   wire [3:0]
-      dst_regW;
    wire [15:0]
       src_data_1D,
       src_data_2D,
@@ -167,8 +185,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    // Signals meant for checking if branch should be taken
    wire
-      cond_passD,              // IATS 1 if the flag reg meets the br conditions
-      branch_matchD;           // cond match and branch
+      cond_passD;              // IATS 1 if the flag reg meets the br conditions
    flag_check Flag_Check(.C(br_codeD), .flag(flagE), .cond_passD(cond_passD));
 
    // branch_matchD determines if branching will occur
@@ -183,8 +200,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    assign br_pcD =
                      forwardD == 2'b00 ? src_data_1D :
                      forwardD == 2'b01 ? alu_outE :
-                     forwardD == 2'b10 ? alu_outM :
-                     forwardD == 2'b11 ? dst_reg_dataW;
+                     forwardD == 2'b10 ? alu_outM : dst_reg_dataW;
 
    // choose between which branch
    // opcode[0] == 1 implies BR, otherwise B
@@ -224,18 +240,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     vldE;
    wire [3:0]
     opcodeE,               // IATS
-    rdE,                   // IATS
-    rsE,
-    rtE,                   // IATS
-    dst_regE;              // either rt or rd
+    rdE;                   // IATS
    wire [15:0]
     src_data_1E,           // values from register
     src_data_2E,
     immE;                  // IATS
    // control signals that may also be pipelined
    wire
-      reg_wrenE,
-      mem_to_regE,
       mem_wrE,
       alu_srcE,            // IATS
       dst_reg_selE;        // IATS
@@ -293,14 +304,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    //Pipeline Time
    wire [39:0] ex_mem_in, ex_mem_out;
-   assign mem_wb_in = {
+   assign ex_mem_in = {
       vldE,
       reg_wrenE,
       mem_to_regE,
       mem_wrE,
       dst_regE,
       alu_outE,
-      data_inE,
+      data_inE
    };
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
@@ -317,11 +328,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // pipeline values coming in
    wire
       vldM,
-      reg_wrenM,
-      mem_to_regM,
       mem_wrM;       // IATS
-   wire [3:0]
-      dst_regM;      // destination register name still
    wire [15:0]
       alu_outM,      // this can also be an address
       data_inM;      // IATS data to data memory
