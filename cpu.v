@@ -315,6 +315,21 @@ assign rst = ~rst_n;
       .vld(vldE),
       .out(alu_outE),
       .flag(flagE));
+	  
+	// I think the flag register would be happier outside of ALU.
+	wire [2:0]
+		flag_wrt_en,	// whether this is a flag updating operation.
+		ALU_flag;		// Flag straight from ALU don't use this to branch check
+	// if it's non arithmetic op, RED or paddsb don't write to zero reg
+	assign flag_wrt_en[0] = ~(opcodeE[3] | (opcodeE == `RED) | (opcodeE == `PADDSB));
+	assign flag_wrt_en[2:1] = (opcodeE == `ADD) | (opcodeE == `SUB);
+	flag_reg flag_reg(
+		.clk(clk),
+		.rst(rst),
+		.d(ALU_flag),
+		.wrt_en(wrt_en & vldE),
+		.q(flag)
+	);
 
    //Pipeline Time
    wire [39:0] ex_mem_in, ex_mem_out;

@@ -75,27 +75,11 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 
-	// flag register and determining flags
-	wire [2:0] flag_imm;
 	// flags. Flag register is write restricted depending on opcode
 	//0 = Z
-	assign flag_imm[0] = out == 16'h0000;
+	assign flag[0] = out == 16'h0000;
 	//1 = V
-	assign flag_imm[1] = addsub_f[1];
+	assign flag[1] = addsub_f[1];
 	//2 = N
-	assign flag_imm[2] = addsub_f[2];
-
-	// need to determine when to write each bit to reg
-	wire [2:0] wrt_en;
-	// if it's non arithmetic op, RED or paddsb don't write to zero reg
-	assign wrt_en[0] = ~(opcode[3] | (opcode == `RED) | (opcode == `PADDSB));
-	assign wrt_en[2:1] = (opcode == `ADD) | (opcode == `SUB);
-
-	flag_reg flag_reg(
-		.clk(clk),
-		.rst(rst),
-		.d(flag_imm),
-		.wrt_en(wrt_en & vld),
-		.q(flag)
-	);
+	assign flag[2] = addsub_f[2];
 endmodule
