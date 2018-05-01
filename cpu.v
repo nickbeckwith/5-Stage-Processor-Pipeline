@@ -1,4 +1,4 @@
-// Notes:
+// Notes
 // IATS: is annihilated this stage. Will not continue to pipeline register
 // this usually means we need to process it this time instead of piping it.
 
@@ -50,6 +50,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   // Determine next PC depending on if there's a branch
   assign pc_nxt = branch_match ? branch_pcD : pc_plus_2F;
 
+  assign pc_en = ~(stallF);
   PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
   /* the only valid instructions are ones that come from
   instrF. Clearing an instruction creates an instructions
@@ -73,8 +74,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(33) if_id(
       .clk(clk),
       .rst(rst),
-      .clr(/*TODO*/),	// branch_match | vldF
-      .wren(/*TODO*/),	// StallD
+      .clr(flushD | vldF),	// branch_match | vldF
+      .wren(~stallD),	// StallD
       .d(if_id_in),
       .q(if_id_out)
    );
@@ -205,7 +206,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(76) id_ex(
       .clk(clk),
       .rst(rst),
-      .clr(/*TODO*/),	// FlushE | VldD
+      .clr(flushE | vldD),	// FlushE | VldD
       .wren(1'b1),	// Always enabled, Hzrds fixed by forwarding
       .d(id_ex_in),
       .q(id_ex_out));
@@ -302,7 +303,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(40) ex_mem(
       .clk(clk),
       .rst(rst),
-      .clr(/*TODO*/),	// VldE
+      .clr(vldE),	// VldE
       .wren(1'b1),	// Always High, Hzrds fixed with forwarding
       .d(ex_mem_in),
       .q(ex_mem_out));
@@ -355,7 +356,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(55) mem_wb( // 55 comes from the size of concatanation
       .clk(clk),
       .rst(rst),
-      .clr(/*TODO*/),   // VldM
+      .clr(vldM),   // VldM
       .wren(1'b1),      // Always High, No Data Hzrds to worry about
       .d(mem_wb_in),
       .q(mem_wb_out));
