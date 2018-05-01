@@ -93,13 +93,13 @@ module memory(clk, rst, d_wrt_en, data_in, i_addr, d_addr,
 
    // arbitration logic begins here
    // give i_cache priority
-   assign sel = i_cache_fsm_busy ? `iCache : `dCache;
+   assign sel = i_fsm_busy ? `iCache : `dCache;
 
    assign mem_addr = sel ? i_miss_addr : d_miss_addr;
 
    assign mem_en = sel ? i_read_req : d_read_req | d_wrt_mem;
 
-   assign mem_wr = sel ? i_wrt_mem ? d_wrt_mem;
+   assign mem_wr = sel ? i_wrt_mem : d_wrt_mem;
 
    assign i_data_vld = sel ? data_vld : 1'b0;
 

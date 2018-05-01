@@ -99,7 +99,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_vld, read_req,
   //////////////////////////////////////////////////////////////////////////////
   // two states so we need only one DFF and a one bit state signal
   wire state, nxt_state;           // FSM relies on state and nxt_state sigs
-  dff state_ff[3:0](.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
+  dff state_fsm[3:0](.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
   // list of reg signal version of outputs
   reg
     fsm_busy_reg,

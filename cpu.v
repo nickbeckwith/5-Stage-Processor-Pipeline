@@ -62,20 +62,21 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pc_en,                // PC Write Enable. From hzd. AKA StallF
    i_fsm_busyF,          // fsm busy from iCache
    branch_match,         // did the branch match the flags (& there's a br instr)
-   hlt,                  // halt signal makes pc_nxt = pc_curr
+   haltF,                 // halt signal makes pc_nxt = pc_curr
    vldF;                 // valid bit for noops
   wire [15:0]
    pc_curr,              // PC value that comes from pc reg
    pc_nxt,               // PC value loaded into pc reg
    pc_plus_2F,           // PC value plus 2
    instrF,               // instruction out from iCache
+   main_mem_outM,        // main mem out
    branch_pcD;           // IATS      Next pc if there's a branch
 
   // Determine next PC depending on if there's a branch
   // If there's a halt, branch takes priority
   assign pc_nxt =
                   branch_match ? branch_pcD :
-                  hlt ? pc_curr : pc_plus_2F;
+                  haltF ? pc_curr : pc_plus_2F;
 
   assign pc_en = ~(stallF);
   PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
@@ -83,8 +84,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   instrF. Clearing an instruction creates an instructions
   of itself but isn't valid. */
   assign vldF = 1'b1;
-  assign pc_out = pc_curr;          // readability
-  assign instrF = main_mem_out;     // value from the main memory
+  assign pc_out = pc_curr;           // readability
+  assign instrF = main_mem_outM;     // value from the main memory
+  assign haltF = &instrF[15:12];     // find halt value
 
   add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
 
@@ -92,8 +94,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   wire [32:0] if_id_in, if_id_out;
   assign if_id_in = {
       vldF,
+      haltF,
       instrF,
-      pc_plus_2f
+      pc_plus_2F
   };
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
@@ -110,22 +113,27 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   /////////////////////////////// D ////////////////////////////////////////
   // pipeline sigs and more
   wire
-      vldD;
+      vldD,
+      haltD;
   wire [2:0]
-      br_codeD,               // IATS     also works for B instruction
+      b_codeD,               // IATS     also works for B instruction
       flagE;                  // flag register output
   wire [3:0]
-      opcodeD;
+      opcodeD,
+      opcodeE;               // IATS
   wire [8:0]
-      br_offD;                // IATS
+      b_offD;                // IATS
   wire [15:0]
       instrD,                 // IATS
       immD,                   // Could be shift or mem offset.
+      alu_outE,               // output of ALU
+      alu_outM,               // this can also be an address
       pc_plus_2D;
 
    //Assign Pipeline Values
    assign {
       vldD,
+      haltD,
       instrD,
       pc_plus_2D
    } = if_id_out;
@@ -174,19 +182,19 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // Remember to reference only the first 4 LSB bits if you want shift amount
    assign immD = opcodeD[1] ?
             {{8{instrD[7]}}, instrD[7:0]} : {{12{1'b0}}, instrD[3:0]};
-   assign br_codeD = instrD[11:9];
-   assign br_offD = instrD[8:0];
+   assign b_codeD = instrD[11:9];
+   assign b_offD = instrD[8:0];
 
    // B and Br PC Cacluations and choosing one to send to PC.
    wire [15:0]
       b_off_extD,            // IATS      sign extended and shifted
-      b_pcD,                 // IATS      = PC + 2 + (br_offD << 1). assumes br
+      b_pcD,                 // IATS      = PC + 2 + (b_offD << 1). assumes br
       br_pcD;                // IATS      = $(RS)
 
    // Signals meant for checking if branch should be taken
    wire
       cond_passD;              // IATS 1 if the flag reg meets the br conditions
-   flag_check Flag_Check(.C(br_codeD), .flag(flagE), .cond_passD(cond_passD));
+   flag_check Flag_Check(.C(b_codeD), .flag(flagE), .cond_passD(cond_passD));
 
    // branch_matchD determines if branching will occur
    assign branch_matchD = branchD & cond_passD;
@@ -210,6 +218,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    wire [75:0] id_ex_in, id_ex_out;
    assign id_ex_in = {
       vldD,
+      haltD,
       reg_wrenD,
       mem_to_regD,
       mem_wrD,
@@ -237,9 +246,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    /////////////////////////////// E ////////////////////////////////////////
    // sigs from the pipeline
    wire
-    vldE;
+    vldE,
+    haltE;
    wire [3:0]
-    opcodeE,               // IATS
     rdE;                   // IATS
    wire [15:0]
     src_data_1E,           // values from register
@@ -254,6 +263,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    //Assign values from pipeline
    assign {
       vldE,
+      haltE,
       reg_wrenE,
       mem_to_regE,
       mem_wrE,
@@ -277,14 +287,13 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       fwd_BE,        // IATS     renamed as it goes to pipeline
       src_AE,        // IATS     input to ALU
       src_BE,        // IATS     input to ALU
-      data_inE,      // What will be written to memory
-      alu_outE;      // output of ALU
+      data_inE;      // What will be written to memory
    wire [1:0]
       fwd_A_selE,    // IATS     Signal from hazard unit
       fwd_B_selE;    // IATS     Signal from hazard unit
 
    assign fwd_AE = fwd_A_selE == 2'b10 ? dst_reg_dataW :
-                   fwd_A_selE == 2'b01 ? alu_out_M :
+                   fwd_A_selE == 2'b01 ? alu_outM :
                    fwd_A_selE == 2'b00 ? src_data_1E : 16'hXXXX;
 
    assign fwd_BE = fwd_B_selE == 2'b10 ? dst_reg_dataW :
@@ -306,6 +315,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    wire [39:0] ex_mem_in, ex_mem_out;
    assign ex_mem_in = {
       vldE,
+      haltE,
       reg_wrenE,
       mem_to_regE,
       mem_wrE,
@@ -328,14 +338,15 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // pipeline values coming in
    wire
       vldM,
+      haltM,
       mem_wrM;       // IATS
    wire [15:0]
-      alu_outM,      // this can also be an address
       data_inM;      // IATS data to data memory
 
    //Assign values from pipeline
    assign {
       vldM,
+      haltM,
       reg_wrenM,
       mem_to_regM,
       mem_wrm,
@@ -346,10 +357,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // hazard signal needed
    wire
       d_fsm_busyM;   // FSM busy from data cache fsm
-
-   // output from memory
-   wire [15:0]
-      main_mem_outM;
 
    // pipeline time
    wire [54:0] mem_wb_in, mem_wb_out;
@@ -368,7 +375,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(55) mem_wb( // 55 comes from the size of concatanation
       .clk(clk),
       .rst(rst),
-      .clr(vldM),   // VldM
+      .clr(vldM),       // VldM
       .wren(1'b1),      // Always High, No Data Hzrds to worry about
       .d(mem_wb_in),
       .q(mem_wb_out));
@@ -377,6 +384,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    // pipeline and assigning
    wire
       vldW,
+      haltW,
       reg_wrenW,     // IATS
       mem_to_regW;   // IATS
    wire [15:0]
@@ -384,6 +392,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       alu_outW;
    assign {          // remember to change these to W when copying over.
          vldW,
+         haltW,
          reg_wrenW,
          mem_to_regW,
          dst_regW,
@@ -394,6 +403,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
    // choose between memory and alu out
    assign dst_reg_dataW = mem_to_regW ? main_mem_outW : alu_outW;
+   // Need to tell test bench we halted now
+   assign hlt = haltW;
    /////////////////////////////// W ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
 
