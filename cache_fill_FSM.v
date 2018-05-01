@@ -99,7 +99,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_vld, read_req,
   //////////////////////////////////////////////////////////////////////////////
   // two states so we need only one DFF and a one bit state signal
   wire state, nxt_state;           // FSM relies on state and nxt_state sigs
-  dff state_fsm[3:0](.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
+  dff state_fsm(.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
   // list of reg signal version of outputs
   reg
     fsm_busy_reg,
@@ -148,6 +148,8 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_vld, read_req,
         nxt_state_reg = done ? `IDLE : `WAIT;   // while in IDLE
       end
       default : begin     // shouldn't happen
+	$display("This shouldnt' happen");
+	$stop;
         write_data_array_reg = 1'bx;
         write_tag_array_reg = 1'bx;
 		cache_addr_reg = 16'hxxxx;
