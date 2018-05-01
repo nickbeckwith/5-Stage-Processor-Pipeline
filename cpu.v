@@ -16,11 +16,14 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   wire
    stallF,
    stallD,
+   stallE,
    flushD,
    branch_matchD,     // cond match and branch
    reg_wrenE,
    mem_to_regE,
    reg_wrenM,
+   i_fsm_busy,
+   d_fsm_busy,
    mem_to_regM;
   wire [3:0]
    rdD,
@@ -34,6 +37,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
   hazard HZRD (
     .branch_matchD(branch_matchD),
+    .i_fsm_busy(i_fsm_busy),
+    .d_fsm_busy(d_fsm_busy),
     .mem_to_regE(mem_to_regE),
     .mem_to_regM(mem_to_regM),
     .reg_wrenE(reg_wrenE),
@@ -48,6 +53,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     .rtE(rtE),
     .stallF(stallF),
     .stallD(stallD),
+    .stallE(stallE),
     .flushD(flushD),
     .forwardD(forwardD),
     .forward_A_selE(forward_A_selE),
@@ -60,7 +66,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
   //////////////////////////////// F ///////////////////////////////////////
   wire
    pc_en,                // PC Write Enable. From hzd. AKA StallF
-   i_fsm_busyF,          // fsm busy from iCache
    branch_match,         // did the branch match the flags (& there's a br instr)
    haltF,                 // halt signal makes pc_nxt = pc_curr
    vldF;                 // valid bit for noops
@@ -104,7 +109,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(33) if_id(
       .clk(clk),
       .rst(rst),
-      .clr(flushD | vldF),	// branch_match | vldF
+      .clr(flushD),	   // branch_match | i_fsm_busy
       .wren(~stallD),	// StallD
       .d(if_id_in),
       .q(if_id_out)
@@ -238,8 +243,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    pipeline_reg #(76) id_ex(
       .clk(clk),
       .rst(rst),
-      .clr(flushE | vldD),	// FlushE | VldD
-      .wren(1'b1),	// Always enabled, Hzrds fixed by forwarding
+      .clr(vldD),
+      .wren(~stallE),      // only occurs from d_fsm_busy
       .d(id_ex_in),
       .q(id_ex_out));
    //////////////////////////////////////////////////////////////////////////
@@ -308,6 +313,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
    alu_compute alu(
       .input_A(src_AE),
       .input_B(src_BE),
+      .opcode(opcodeE),
+      .vld(vldE),
       .out(alu_outE),
       .flag(flagE));
 
@@ -330,7 +337,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .clk(clk),
       .rst(rst),
       .clr(vldE),	// VldE
-      .wren(1'b1),	// Always High, Hzrds fixed with forwarding
+      .wren(stallE),	// stallE is caused from data cache miss
       .d(ex_mem_in),
       .q(ex_mem_out));
    //////////////////////////////////////////////////////////////////////////
@@ -354,9 +361,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       alu_outM,
       data_inM
    } = ex_mem_out;
-   // hazard signal needed
-   wire
-      d_fsm_busyM;   // FSM busy from data cache fsm
 
    // pipeline time
    wire [54:0] mem_wb_in, mem_wb_out;
@@ -417,8 +421,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .data_in(data_inM),
       .i_addr(pc_curr),
       .d_addr(alu_outM),
-      .i_fsm_busy(i_fsm_busyF),
-      .d_fsm_busy(d_fsm_busyM),
+      .i_fsm_busy(i_fsm_busy),
+      .d_fsm_busy(d_fsm_busy),
       .d_mem_en(mem_to_regM | mem_wrM),
       .instr_out(instrF),
       .data_out(main_mem_outM));

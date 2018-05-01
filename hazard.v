@@ -1,9 +1,11 @@
-module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
-   reg_wrenM, dst_regM, reg_wrenW, dst_regW, rsD, rtD, rsE, rtE, stallF, stallD,
-   flushD, forwardD, forward_A_selE, forward_B_selE);
+module hazard(branch_matchD, i_fsm_busy, d_fsm_busy, mem_to_regE, reg_wrenE,
+   dst_regE, mem_to_regM, reg_wrenM, dst_regM, reg_wrenW, dst_regW, rsD, rtD,
+   rsE, rtE, stallF, stallD, stallE, flushD, forwardD, forward_A_selE, forward_B_selE);
 
    input
       branch_matchD,       // Is a branch being taken?
+      i_fsm_busy,
+      d_fsm_busy,
       mem_to_regE,         // Is this a load instruction?
       mem_to_regM,
       reg_wrenE,           // Is a register being written to (need fwding
@@ -20,6 +22,7 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
    output
       stallF,              // Stops writes to register.
       stallD,
+      stallE,              // upstream from memory..
       flushD;              // Just connect it to branch_matchD
    /* In forwarding, the general pattern will be that the oldest signal
    such as a signal in WB will always be selected by the highest sel value */
@@ -40,7 +43,7 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
                      (reg_wrenM & (rsD == dst_regM)) ? 2'b10:
                      (reg_wrenW & (rsD == dst_regW)) ? 2'b11: 2'b0;
 
-	assign flushD = branch_matchD;
+	assign flushD = branch_matchD | i_fsm_busy;
 
 
 /* EX Hazard
@@ -73,10 +76,13 @@ if (ID/EX.MemRead & ((ID/EX.Rt == IF/ID.Rs) | (ID/EX.Rt == IF/ID.Rt))) Stall Pip
                           // is stalled on both ALU and branch depndency
    wire stall_frm_M;      // mem load is in mem stage while dependent is in decode
                           // is stalled only on branch dependency
+   // stall_Frm_x sigs are only data dependence stalls. On cache busy, further
+   // logic needs to occur with d_cache_fsm_busy.
    assign stall_frm_E = mem_to_regE & ((dst_regE == rsD) | (dst_regE == rtD));
    assign stall_frm_M = mem_to_regM & (dst_regM == rsD);
-   assign stall_pipeline = stall_frm_E | stall_frm_M;
+   assign stall_pipeline = stall_frm_E | stall_frm_M | d_fsm_busy;
 	assign stallF = stall_pipeline;
 	assign stallD = stall_pipeline;
+   assign stallE = d_fsm_busy;
 
 endmodule

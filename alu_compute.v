@@ -1,6 +1,8 @@
 `include "alu_compute.vh"
 
-module alu_compute(input_A, input_B, opcode, out, flag);
+module alu_compute(input_A, input_B, opcode, vld, out, flag);
+	input
+		vld;				// is this operation valid?
 	input [3:0]
 		opcode;			// Couldn't figure out how to get this down to 3 sigs
 	input [15:0]
@@ -89,6 +91,11 @@ module alu_compute(input_A, input_B, opcode, out, flag);
 	assign wrt_en[0] = ~(opcode[3] | (opcode == `RED) | (opcode == `PADDSB));
 	assign wrt_en[2:1] = (opcode == `ADD) | (opcode == `SUB);
 
-	flag_reg flag_reg(.clk(clk), .rst(rst), .d(flag_imm), .wrt_en(wrt_en), .q(flag));
-
+	flag_reg flag_reg(
+		.clk(clk),
+		.rst(rst),
+		.d(flag_imm),
+		.wrt_en(wrt_en & vld),
+		.q(flag)
+	);
 endmodule
