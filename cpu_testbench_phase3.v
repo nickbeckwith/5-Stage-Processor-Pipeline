@@ -1,3 +1,4 @@
+`include "cpu.v"
 module cpu_ptb();
 
 
@@ -172,31 +173,31 @@ module cpu_ptb();
    // Is processor halted (1 bit signal)
 
 
-   assign Inst = DUT.instr_out;
+   assign Inst = DUT.instrF;
    //Instruction fetched in the current cycle
 
-   assign RegWrite =~(DUT.exmem_op[3]) | ~(DUT.exmem_op[2]) | (DUT.exmem_op[1] & ~(DUT.exmem_op[0]));
+   assign RegWrite = DUT.reg_wrenW;
    // Is register file being written to in this cycle, one bit signal (1 means yes, 0 means no)
 
-   assign WriteRegister = DUT.memwb_rd;
+   assign WriteRegister = DUT.dst_regW;
    // If above is true, this should hold the name of the register being written to. (4 bit signal)
 
-   assign WriteData = DUT.dest_data;
+   assign WriteData = DUT.dst_reg_dataW;
    // If above is true, this should hold the Data being written to the register. (16 bits)
 
-   assign MemRead =  (DUT.mem_access_en & ~DUT.mem_access_wen);
+   assign MemRead =  DUT.mem_to_regM;
    // Is memory being read from, in this cycle. one bit signal (1 means yes, 0 means no)
 
-   assign MemWrite = (DUT.mem_access_wen & DUT.mem_access_en);
+   assign MemWrite = DUT.mem_wrM;
    // Is memory being written to, in this cycle (1 bit signal)
 
-   assign MemAddress = DUT.mem_access_addr;
+   assign MemAddress = DUT.alu_outM;
    // If there's a memory access this cycle, this should hold the address to access memory with (for both reads and writes to memory, 16 bits)
 
-   assign MemDataIn = DUT.data_in;
+   assign MemDataIn = DUT.data_inM;
    // If there's a memory write in this cycle, this is the Data being written to memory (16 bits)
 
-   assign MemDataOut = DUT.data_out;
+   assign MemDataOut = MemRead ? DUT.main_mem_outM : 16'b0;
    // If there's a memory read in this cycle, this is the data being read out of memory (16 bits)
 
    assign ICacheReq = DUT.icache_read_req;
