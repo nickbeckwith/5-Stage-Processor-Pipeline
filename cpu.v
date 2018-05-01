@@ -22,6 +22,9 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
     .dst_regE(dst_regE),
     .dst_regM(dst_regM),
     .dst_regW(dst_regW),
+    .rsD(rsD),
+    .rsE(rsE),
+    .rtE(rtE),
     .stallF(stallF),
     .stallD(stallD),
     .flushD(flushD),
@@ -121,8 +124,8 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
       .mem_wr(mem_wrD),
       .alu_src(alu_srcD),
       .dst_reg_sel(dst_reg_selD),
-      .branch(branchD));
-
+      .branch(branchD)
+   );
    // Signals meant for checking if branch should be taken
    wire
       cond_passD,              // IATS 1 if the flag reg meets the br conditions

@@ -1,6 +1,6 @@
 module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
-   reg_wrenM, dst_regM, reg_wrenW, dst_regW, stallF, stallD, flushD,
-   forwardD, forward_A_selE, forward_B_selE);
+   reg_wrenM, dst_regM, reg_wrenW, dst_regW, rsD, rsE, rtE, stallF, stallD,
+   flushD, forwardD, forward_A_selE, forward_B_selE);
 
    input
       branch_matchD,       // Is a branch being taken?
@@ -12,10 +12,9 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
    input [3:0]
       dst_regE,            // what register is being written to?
       dst_regM,            // (What register should be fwded)
-      dst_regW;
-      rsD;
-      rtD;
-      rsE;
+      dst_regW,
+      rsD,
+      rsE,
       rtE;
    output
       stallF,              // Stops writes to register.
@@ -35,10 +34,11 @@ module hazard(branch_matchD, mem_to_regE, reg_wrenE, dst_regE, mem_to_regM,
             01 - dst reg in ex stage needs to be forwarded
             00 - forwarding not needed
       */
-      assign forwardD = (branch_matchD & reg_wrenW & (rsD==dst_regW)) ? 2'b11:
-                        (branch_matchD & reg_wrenM & (rsD==dst_regM)) ? 2'b10:
-                        (branch_matchD & reg_wrenE & (rsD==dst_regE)) ? 2'b01:
-                        2'b0;
+   assign forwardD =
+                     (reg_wrenE & (rsD==dst_regE)) ? 2'b01:
+                     (reg_wrenM & (rsD==dst_regM)) ? 2'b10:
+                     (reg_wrenW & (rsD==dst_regW)) ? 2'b11:
+                     2'b0;
 
 	assign flushD = branch_matchD;
 
@@ -65,8 +65,17 @@ if (MEM/WB.RegWrite & (MEM/WB.Rd != 0) & (MEM/WB.Rd == ID/EX.RT)) Forward from M
 /*
 if (ID/EX.MemRead & ((ID/EX.Rt == IF/ID.Rs) | (ID/EX.Rt == IF/ID.Rt))) Stall Pipeline
 */
-	wire stall_pipeline;
-	assign stall_pipeline = mem_to_regM & ((rtE == rsD) | (rtE == rtD));
+   /* We only forward memory reads in the WB stage to reduce clk. However, both
+   the decode stage and the execute stage require what is read from memory.
+   Therefore, we must stall while the offending instruction is in the decode stage.
+   We must stall if mem load is in execute or mem stage and its data is requested. */
+	wire stall_frm_E;      // mem load is in execute stage while dependent is in decode
+                          // is stalled on both ALU and branch depndency
+   wire stall_frm_M;      // mem load is in mem stage while dependent is in decode
+                          // is stalled only on branch dependency
+   assign stall_frm_E = mem_to_regE & ((dst_regE == rsD)) | (dst_regE == rtD));
+   assign stall_frm_M = mem_to_regM & (dst_regM == rsD);
+   assign stall_pipeline = stall_frm_E | stall_frm_M;
 	assign stallF = stall_pipeline;
 	assign stallD = stall_pipeline;
 
