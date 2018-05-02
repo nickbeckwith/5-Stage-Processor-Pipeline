@@ -19,7 +19,8 @@ module control_unit(opcode, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
 
       assign alu_src = (opcode == `LW) | (opcode == `SW) |
                         (opcode == `ROR) | (opcode == `SLL) |
-                        (opcode == `SRA);
+                        (opcode == `SRA) | (opcode == `LLB) |
+			(opcode == `LHB);
 
       assign dst_reg_sel = ~(opcode == `LW);
 
