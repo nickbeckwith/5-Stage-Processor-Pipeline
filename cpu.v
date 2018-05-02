@@ -318,7 +318,6 @@ assign rst = ~rst_n;
 
 	// I think the flag register would be happier outside of ALU.
 	wire [2:0]
-		flag,
 		flag_wrt_en,	// whether this is a flag updating operation.
 		ALU_flag;		// Flag straight from ALU don't use this to branch check
 	// if it's non arithmetic op, RED or paddsb don't write to zero reg
@@ -329,7 +328,7 @@ assign rst = ~rst_n;
 		.rst(rst),
 		.d(ALU_flag),
 		.wrt_en(flag_wrt_en & {vldE, vldE, vldE}),
-		.q(flag)
+		.q(flagE)
 	);
 
    //Pipeline Time
