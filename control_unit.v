@@ -1,8 +1,9 @@
 `include "opcodes.vh"
-module control_unit(opcode, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
+module control_unit(opcode, vld, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
          branch);
    input [3:0]
-      opcode;
+      opcode,
+      vld;		// Valid bit from register
    output
       reg_wren,         // Enables writing to register
       mem_to_reg,       // Enables reading from memory and writes to reg
@@ -24,8 +25,8 @@ module control_unit(opcode, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
 
       assign dst_reg_sel = ~(opcode == `LW);
 
-      // enabled on all arithmetic and some memory ops
-      assign reg_wren = (~opcode[3]) | (opcode == `LW) | (opcode == `LHB) |
-                        (opcode == `LLB) | (opcode == `PCS);
+      // enabled on all arithmetic and some memory ops (must be valid!)
+      assign reg_wren = ((~opcode[3]) | (opcode == `LW) | (opcode == `LHB) |
+                        (opcode == `LLB) | (opcode == `PCS)) & vld;
 
 endmodule

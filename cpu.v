@@ -154,6 +154,7 @@ assign rst = ~rst_n;
       branchD;              // IATS    is this a branch operation
    control_unit ControlUnit(
       .opcode(opcodeD),
+      .vld(vldD),
       .reg_wren(reg_wrenD),
       .mem_to_reg(mem_to_regD),
       .mem_wr(mem_wrD),
@@ -231,7 +232,7 @@ assign rst = ~rst_n;
       opcodeD,
       alu_srcD,
       dst_reg_selD,
-      (opcodeE == `PCS) ? pc_plus_2D : src_data_1D,   // in case of PCS instruction
+      (opcodeD == `PCS) ? pc_plus_2D : src_data_1D,   // in case of PCS instruction
       src_data_2D,                                    // we want to get pc+2 into the
       rdD,                                            // reg wr data path
       rsD,
