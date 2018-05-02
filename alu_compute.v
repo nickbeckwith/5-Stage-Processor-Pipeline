@@ -14,6 +14,8 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 		flag;				// output from flag register
 
 	// Adder and subtracter is responsible for some arith and mem address calc
+	wire
+		sub;			// signal to subtract.
 	wire [15:0]
 		addsub_o;		// output of adder
 	wire [2:0]
@@ -21,12 +23,14 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	wire [15:0]
 		add_input_A,
 		add_input_B;
+	// determine if we need to subtract. Subtract if opcode[0] is 1 and it's not a mem operation
+	assign sub = opcode[3] ? 1'b0 : opcode[0];
 	// if mem operation, need to make sure address is even
 	assign add_input_A = opcode[3] ? input_A & 16'hFFFE : input_A;
 	// Need to add 0 back from encoded offset
 	assign add_input_B = opcode[3] ? input_B >> 1 : input_B;
 	alu_adder ADDSUB(
-		.mode(opcode[0]),
+		.mode(sub),
 		.A(add_input_A),
 		.B(add_input_B),
 		.S(addsub_o),

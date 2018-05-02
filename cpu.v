@@ -103,6 +103,7 @@ assign rst = ~rst_n;
       instrF,
       pc_plus_2F
   };
+
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
    // ID/ED pipelineregisteer
@@ -437,5 +438,14 @@ assign rst = ~rst_n;
       .d_mem_en(mem_to_regM | mem_wrM),
       .instr_out(instrF),
       .data_out(main_mem_outM));
+
+	// REMOVE THIS IN FINAL COMPLIATION. JUST FOR KEEPING TRACK OF OPCODE
+reg [3:0] opcodeM, opcodeW;
+always @(posedge clk) begin
+	if (~stallE)
+		opcodeM <= opcodeE;
+	opcodeW <= opcodeM;
+end
+
 
 endmodule
