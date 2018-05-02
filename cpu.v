@@ -379,6 +379,7 @@ assign rst = ~rst_n;
    wire [54:0] mem_wb_in, mem_wb_out;
    assign mem_wb_in = {
       vldM,
+      haltM,
       reg_wrenM,
       mem_to_regM,
       dst_regM,
