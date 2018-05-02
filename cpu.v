@@ -350,7 +350,7 @@ assign rst = ~rst_n;
       .clk(clk),
       .rst(rst),
       .clr(1'b0),	// VldE
-      .wren(stallE),	// stallE is caused from data cache miss
+      .wren(~stallE),	// stallE is caused from data cache miss
       .d(ex_mem_in),
       .q(ex_mem_out));
    //////////////////////////////////////////////////////////////////////////
