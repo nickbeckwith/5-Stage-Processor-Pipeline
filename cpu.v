@@ -123,7 +123,7 @@ assign rst = ~rst_n;
       haltD;
   wire [2:0]
       b_codeD,               // IATS     also works for B instruction
-      flagE;                  // flag register output
+      flag_regE;                  // flag register output
   wire [3:0]
       opcodeD,
       opcodeE;               // IATS
@@ -200,7 +200,7 @@ assign rst = ~rst_n;
    // Signals meant for checking if branch should be taken
    wire
       cond_passD;              // IATS 1 if the flag reg meets the br conditions
-   flag_check Flag_Check(.C(b_codeD), .flag(flagE), .cond_passD(cond_passD));
+   flag_check Flag_Check(.C(b_codeD), .flag(flag_regE), .cond_passD(cond_passD));
 
    // branch_matchD determines if branching will occur
    assign branch_matchD = branchD & cond_passD;
@@ -307,28 +307,29 @@ assign rst = ~rst_n;
    assign src_AE = fwd_AE;
    assign src_BE = alu_srcE ? immE : fwd_BE;    // selects imm or reg values
 
-   // Create alu
+   // Create alu and flag regs
+   // I think the flag register would be happier outside of ALU.
+	wire [2:0]
+		flag_wrt_en,	// whether this is a flag updating operation.
+		ALU_flagE;		// Flag straight from ALU don't use this to branch check
+
    alu_compute alu(
       .input_A(src_AE),
       .input_B(src_BE),
       .opcode(opcodeE),
       .vld(vldE),
       .out(alu_outE),
-      .flag(flagE));
+      .flag(ALU_flagE));
 
-	// I think the flag register would be happier outside of ALU.
-	wire [2:0]
-		flag_wrt_en,	// whether this is a flag updating operation.
-		ALU_flag;		// Flag straight from ALU don't use this to branch check
 	// if it's non arithmetic op, RED or paddsb don't write to zero reg
 	assign flag_wrt_en[0] = ~(opcodeE[3] | (opcodeE == `RED) | (opcodeE == `PADDSB));
 	assign flag_wrt_en[2:1] = (opcodeE == `ADD) | (opcodeE == `SUB);
 	flag_reg flag_reg(
 		.clk(clk),
 		.rst(rst),
-		.d(ALU_flag),
+		.d(ALU_flagE),
 		.wrt_en(flag_wrt_en & {vldE, vldE, vldE}),
-		.q(flagE)
+		.q(flag_regE)
 	);
 
    //Pipeline Time
