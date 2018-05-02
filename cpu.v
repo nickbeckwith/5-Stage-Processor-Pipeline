@@ -91,7 +91,6 @@ assign rst = ~rst_n;
   of itself but isn't valid. */
   assign vldF = 1'b1;
   assign pc_out = pc_curr;           // readability
-  assign instrF = main_mem_outM;     // value from the main memory
   assign haltF = &instrF[15:12];     // find halt value
 
   add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
