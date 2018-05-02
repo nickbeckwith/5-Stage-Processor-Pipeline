@@ -96,7 +96,7 @@ assign rst = ~rst_n;
   add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
 
   //Pipeline Time
-  wire [32:0] if_id_in, if_id_out;
+  wire [33:0] if_id_in, if_id_out;
   assign if_id_in = {
       vldF,
       haltF,
@@ -106,7 +106,7 @@ assign rst = ~rst_n;
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
    // ID/ED pipelineregisteer
-   pipeline_reg #(33) if_id(
+   pipeline_reg #(34) if_id(
       .clk(clk),
       .rst(rst),
       .clr(flushD),	   // branch_match | i_fsm_busy
@@ -243,7 +243,7 @@ assign rst = ~rst_n;
    pipeline_reg #(76) id_ex(
       .clk(clk),
       .rst(rst),
-      .clr(vldD),
+      .clr(1'b0),
       .wren(~stallE),      // only occurs from d_fsm_busy
       .d(id_ex_in),
       .q(id_ex_out));
@@ -332,7 +332,7 @@ assign rst = ~rst_n;
 	);
 
    //Pipeline Time
-   wire [39:0] ex_mem_in, ex_mem_out;
+   wire [40:0] ex_mem_in, ex_mem_out;
    assign ex_mem_in = {
       vldE,
       haltE,
@@ -346,10 +346,10 @@ assign rst = ~rst_n;
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
    // EX/MEM pipeline registeer
-   pipeline_reg #(40) ex_mem(
+   pipeline_reg #(41) ex_mem(
       .clk(clk),
       .rst(rst),
-      .clr(vldE),	// VldE
+      .clr(1'b0),	// VldE
       .wren(stallE),	// stallE is caused from data cache miss
       .d(ex_mem_in),
       .q(ex_mem_out));
@@ -376,7 +376,7 @@ assign rst = ~rst_n;
    } = ex_mem_out;
 
    // pipeline time
-   wire [54:0] mem_wb_in, mem_wb_out;
+   wire [39:0] mem_wb_in, mem_wb_out;
    assign mem_wb_in = {
       vldM,
       haltM,
@@ -384,16 +384,15 @@ assign rst = ~rst_n;
       mem_to_regM,
       dst_regM,
       alu_outM,
-      data_inM,
       main_mem_outM
    };
    /////////////////////////////// M ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
    // Mem/WB pipeline register
-   pipeline_reg #(55) mem_wb( // 55 comes from the size of concatanation
+   pipeline_reg #(40) mem_wb( // 55 comes from the size of concatanation
       .clk(clk),
       .rst(rst),
-      .clr(vldM),       // VldM
+      .clr(1'b0),       // VldM
       .wren(1'b1),      // Always High, No Data Hzrds to worry about
       .d(mem_wb_in),
       .q(mem_wb_out));
@@ -414,7 +413,6 @@ assign rst = ~rst_n;
          mem_to_regW,
          dst_regW,
          alu_outW,
-         data_inW,
          main_mem_outW
       } = mem_wb_out;
 
