@@ -1,4 +1,3 @@
-`include "dff.v"
 module pipeline_reg(clk, rst, d, clr, wren, q);
    parameter WIDTH = 16;
    input

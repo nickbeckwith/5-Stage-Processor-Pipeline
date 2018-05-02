@@ -1,4 +1,3 @@
-`include "cpu.v"
 module cpu_ptb();
 
 
