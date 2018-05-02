@@ -1,5 +1,3 @@
-`include "dff.v"
-
 module flag_reg(clk, rst, d, wrt_en, q);
 	input
 		clk,

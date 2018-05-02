@@ -1,6 +1,3 @@
-`include "iCache.v"
-`include "dCache.v"
-`include "multicycle_memory.v"
 `define iCache 1'b1
 `define dCache 1'b0
 

@@ -5,7 +5,6 @@
 `include "RED.v"
 `include "shifter.v"
 `include "paddsb.v"
-`include "flag_reg.v"
 
 `define ADD     4'b0000
 `define SUB     4'b0001

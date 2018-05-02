@@ -1,7 +1,3 @@
-`include "ror.v"
-`include "sll.v"
-`include "sra.v"
-
 module shifter(Shift_Out, Zero, Shift_In, Shift_Val, Mode);
 	input [15:0] Shift_In;
 	input [3:0] Shift_Val;

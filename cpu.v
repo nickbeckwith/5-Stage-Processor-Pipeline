@@ -315,7 +315,7 @@ assign rst = ~rst_n;
       .vld(vldE),
       .out(alu_outE),
       .flag(flagE));
-	  
+
 	// I think the flag register would be happier outside of ALU.
 	wire [2:0]
 		flag,

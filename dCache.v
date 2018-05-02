@@ -23,9 +23,6 @@ MetaDataArray DataOut:
 	DataOut[7] = Valid Bit of block residing in corresponding DataArray Location
 	DataOut[4:0] = Tag of block residing in corresponding DataArray Location
 */
-`include "cache_fill_FSM.v"
-`include "MetaDataArray.v"
-`include "DataArray.v"
 `include "opcodes.vh"
 module dCache(clk, rst, wrt_en, mem_data_vld, read_req, mem_data, addr_in,
 				fsm_busy, wrt_mem, miss_addr, data_out, mem_en, ifsm_busy, reg_in);
@@ -48,7 +45,7 @@ module dCache(clk, rst, wrt_en, mem_data_vld, read_req, mem_data, addr_in,
 	output [15:0]				// (can be used as pipeline stall signal)
 		miss_addr, 				//Address that should be attached to main memory
 		data_out;					//Data Read from cache
-	
+
 	wire [15:0] cache_addr, data_in;	// data_in is either mem_data, reg_data
 	wire wrt_tag;
 	wire wrt_hit;
@@ -73,7 +70,7 @@ module dCache(clk, rst, wrt_en, mem_data_vld, read_req, mem_data, addr_in,
 
 	// determine what data to put what data into data_array
 	assign data_in = hit ? reg_in : mem_data;
-	
+
 	// meta data stored in the cache
 	wire [7:0] meta_data;
 	wire [7:0] meta_data_vld; 	// This is the only write we'd ever make to the tag.

@@ -19,9 +19,6 @@ MetaDataArray DataOut:
 	DataOut[7] = Valid Bit of block residing in corresponding DataArray Location
 	DataOut[4:0] = Tag of block residing in corresponding DataArray Location
 */
-`include "cache_fill_FSM.v"
-`include "MetaDataArray.v"
-`include "DataArray.v"
 module iCache(clk, rst, mem_data_vld, read_req, mem_data, addr_in,
 									fsm_busy, wrt_mem, miss_addr, data_out);
 	input
