@@ -132,7 +132,7 @@ module cache_fill_FSM(clk, rst, wrt, miss_detected, memory_data_vld, read_req,
         fsm_busy_reg = miss_detected ? 1'b1 : 1'b0;   // on transition to wait
         incr_cnt_reg = 1'b0;
         read_req_reg = 1'b0;
-        wrt_mem_reg = wrt;
+        wrt_mem_reg = miss_detected ? 1'b0 : wrt;
         nxt_state_reg = miss_detected ? `WAIT : `IDLE;
       end
       `WAIT : begin

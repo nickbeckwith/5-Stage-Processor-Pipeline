@@ -28,7 +28,7 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	// if mem operation, need to make sure address is even
 	assign add_input_A = opcode[3] ? input_A & 16'hFFFE : input_A;
 	// Need to add 0 back from encoded offset
-	assign add_input_B = opcode[3] ? input_B >> 1 : input_B;
+	assign add_input_B = opcode[3] ? input_B << 1 : input_B;
 	alu_adder ADDSUB(
 		.mode(sub),
 		.A(add_input_A),
