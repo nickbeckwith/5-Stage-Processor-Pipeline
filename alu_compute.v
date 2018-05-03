@@ -1,65 +1,89 @@
 `include "alu_compute.vh"
 
-module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, Flag);
-	input [15:0] InputA, InputB, Offset;
-	input [3:0] Opcode, Shift_Imm;
-	output [15:0] OutputA, OutputB;
-	output [2:0] Flag;
+module alu_compute(input_A, input_B, opcode, vld, out, flag);
+	input
+		vld;				// is this operation valid?
+	input [3:0]
+		opcode;			// Couldn't figure out how to get this down to 3 sigs
+	input [15:0]
+		input_A,			// base addr, or first operand, or $(rd)
+		input_B;			// shift offset, mem imm, second operand
+	output [15:0]
+		out;
+	output [2:0]
+		flag;				// output from flag register
 
-	wire [15:0] addsub_o;
-	wire [2:0] addsub_f;
-	alu_adder ADDSUB (Opcode[0], InputA, InputB, addsub_o, addsub_f[2], addsub_f[1], addsub_f[0]);
+	// Adder and subtracter is responsible for some arith and mem address calc
+	wire
+		sub;			// signal to subtract.
+	wire [15:0]
+		addsub_o;		// output of adder
+	wire [2:0]
+		addsub_f;		// output of flags
+	wire [15:0]
+		add_input_A,
+		add_input_B;
+	// determine if we need to subtract. Subtract if opcode[0] is 1 and it's not a mem operation
+	assign sub = opcode[3] ? 1'b0 : opcode[0];
+	// if mem operation, need to make sure address is even
+	assign add_input_A = opcode[3] ? input_A & 16'hFFFE : input_A;
+	// Need to add 0 back from encoded offset
+	assign add_input_B = opcode[3] ? input_B << 1 : input_B;
+	alu_adder ADDSUB(
+		.mode(sub),
+		.A(add_input_A),
+		.B(add_input_B),
+		.S(addsub_o),
+		.N(addsub_f[2]),
+		.V(addsub_f[1]),
+		.Z(addsub_f[0]));
 
 	wire [15:0] red_o;
-	RED RED_mod (InputA, InputB, red_o);
+	RED RED_mod(input_A, input_B, red_o);
 
 	wire [15:0] xor_o;
-	assign xor_o = InputA ^ InputB;
+	assign xor_o = input_A ^ input_B;
 
 	wire [15:0] shift_o;
 	wire shift_f;
-	shifter SHIFT (.Shift_Out(shift_o), .Zero(shift_f), .Shift_In(InputA), .Shift_Val(Shift_Imm), .Mode(Opcode[1:0]));
+	shifter SHIFT(
+		.Shift_Out(shift_o),
+		.Zero(shift_f),
+		.Shift_In(input_A),
+		.Shift_Val(input_B[3:0]),
+		.Mode(opcode[1:0]));
 
 	wire [15:0] paddsb_o;
-	paddsb PADDSB (InputA, InputB, paddsb_o);
+	paddsb PADDSB(input_A, input_B, paddsb_o);
 
-	wire [15:0] mem_addr, rs_even, imm_shift;
-	assign rs_even = InputA & 16'b1111111111111110;
-	assign imm_shift = Offset << 1;
-	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(OutputA), .cout());
-
-	wire [15:0] LLB, LHB, LXX_o;
-	assign LLB = {InputA[15:8], Offset[7:0]};
-	assign LHB = {Offset[7:0], InputA[7:0]};
+	wire [15:0] LLB, LHB;
+	assign LLB = {input_A[15:8], input_B[7:0]};
+	assign LHB = {input_B[7:0], input_A[7:0]};
 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
-	reg [15:0] OutputB_im;
-	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
-		casez (Opcode)
-			`SW 			: OutputB_im = InputB;
-			`LHB 			: OutputB_im = LHB;
-			`LLB 			: OutputB_im = LLB;
-			`ADD 			: OutputB_im = addsub_o;
-			`SUB 			: OutputB_im = addsub_o;
-			`RED 			: OutputB_im = red_o;
-			`XOR 			: OutputB_im = xor_o;
-			`SLL 			: OutputB_im = shift_o;
-			`SRA 			: OutputB_im = shift_o;
-			`ROR 			: OutputB_im = shift_o;
-			`PADDSB 	: OutputB_im = paddsb_o;
-			default: OutputB_im = 16'h0000;
+	reg [15:0] out_reg;
+	always @* begin
+		casez (opcode)
+			`PCS		: out_reg = input_A;
+			4'bz00z		: out_reg = addsub_o;	//add,sub,lw,sw
+			`PADDSB		: out_reg = paddsb_o;
+			4'bz1zz		: out_reg = shift_o;	 	// all shift ops
+			`RED			: out_reg = red_o;
+			`XOR			: out_reg = xor_o;
+			`LHB			: out_reg = LHB;
+			default 		: out_reg = LLB;			// LLB. and everything else.
 		endcase
 	end
-	assign OutputB = OutputB_im;
+	assign out = out_reg;
 	/////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 
 	// flags. Flag register is write restricted depending on opcode
 	//0 = Z
-	assign Flag[0] = OutputB == 16'h0000;
+	assign flag[0] = out == 16'h0000;
 	//1 = V
-	assign Flag[1] = addsub_f[1];
+	assign flag[1] = addsub_f[1];
 	//2 = N
-	assign Flag[2] = addsub_f[2];
+	assign flag[2] = addsub_f[2];
 endmodule

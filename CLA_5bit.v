@@ -1,5 +1,3 @@
-`include "CLA_Cell.v"
-
 module CLA_5bit(input [4:0] A,B, output [4:0] S, output Cout);
 	wire g0,p0,g1,p1,g2,p2,g3,p3,g4,p4,c0,c1,c2,c3,c4,int_1,int_2,int_3,int_4,int_5;
 	assign c0 = 0;

@@ -1,5 +1,3 @@
-`include "dff.v"
-
 module BitCell(input clk, input rst, input D, input WriteEnable, input ReadEnable1, input ReadEnable2, inout Bitline1, inout Bitline2);
 
 	wire ff_out;
