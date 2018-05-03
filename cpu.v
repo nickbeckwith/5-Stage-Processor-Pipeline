@@ -26,6 +26,7 @@ assign rst = ~rst_n;
    reg_wrenM,
    i_fsm_busy,
    d_fsm_busy,
+   reg_wrenW,
    mem_to_regM;
   wire [3:0]
    rdD,
@@ -45,7 +46,7 @@ assign rst = ~rst_n;
     .mem_to_regM(mem_to_regM),
     .reg_wrenE(reg_wrenE),
     .reg_wrenM(reg_wrenM),
-    .reg_wrenW(reg_wrenM),
+    .reg_wrenW(reg_wrenW),
     .dst_regE(dst_regE),
     .dst_regM(dst_regM),
     .dst_regW(dst_regW),
@@ -164,8 +165,6 @@ assign rst = ~rst_n;
    );
 
    // instantiate register and signals needed possibly from WB
-   wire
-      reg_wrenW;
    wire [15:0]
       src_data_1D,
       src_data_2D,
