@@ -74,7 +74,7 @@ module memory(clk, rst, d_wrt_en, data_in, i_addr, d_addr,
       .reg_in(data_in));
 
 
-   memory4c mem(
+   memory4c #(16) mem(
       .data_out(mem_data_out),
       .data_in(mem_data_in),
       .addr(mem_addr),
