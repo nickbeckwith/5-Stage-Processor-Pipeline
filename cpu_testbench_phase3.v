@@ -31,6 +31,8 @@ module cpu_ptb();
    integer     ICacheHit_count;
    integer     DCacheReq_count;
    integer     ICacheReq_count;
+   integer     ICacheMiss_count;
+   integer     DCacheMiss_count;
 
 
    reg clk; /* Clock input */
@@ -55,6 +57,8 @@ module cpu_ptb();
       ICacheHit_count = 0;
       DCacheReq_count = 0;
       ICacheReq_count = 0;
+      ICacheMiss_count = 0;
+      DCacheMiss_count = 0;
 
       trace_file = $fopen("verilogsim.ptrace");
       sim_log_file = $fopen("verilogsim.plog");
@@ -102,12 +106,6 @@ module cpu_ptb();
          if (Halt || RegWrite || MemWrite) begin
             inst_count = inst_count + 1;
          end
-	 if (DCacheHit) begin
-            DCacheHit_count = DCacheHit_count + 1;
-         end
-	 if (ICacheHit) begin
-            ICacheHit_count = ICacheHit_count + 1;
-	 end
 	 if (DCacheReq) begin
             DCacheReq_count = DCacheReq_count + 1;
          end
@@ -141,7 +139,9 @@ module cpu_ptb();
             $fdisplay(trace_file,"STORE: ADDR: 0x%04x VALUE: 0x%04x",
                       MemAddress, MemDataIn  );
          end
-         if (Halt) begin
+         if (Halt) begin 
+		DCacheHit_count = DCacheReq_count - DCacheMiss_count +1; 
+		ICacheHit_count = ICacheReq_count - ICacheMiss_count;
             $fdisplay(sim_log_file, "SIMLOG:: Processor halted\n");
             $fdisplay(sim_log_file, "SIMLOG:: sim_cycles %d\n", cycle_count);
             $fdisplay(sim_log_file, "SIMLOG:: inst_count %d\n", inst_count);
@@ -199,18 +199,23 @@ module cpu_ptb();
    assign MemDataOut = MemRead ? DUT.main_mem_outM : 16'b0;
    // If there's a memory read in this cycle, this is the data being read out of memory (16 bits)
 
-   assign ICacheReq = DUT.memory.i_read_req;
+   assign ICacheReq = DUT.vldD & (~DUT.stallF | ~DUT.stallD);
    // Signal indicating a valid instruction read request to cache
 
-   assign ICacheHit = ~DUT.i_fsm_busy;
-   // Signal indicating a valid instruction cache hit
+   always @(negedge DUT.i_fsm_busy) begin
+	ICacheMiss_count = ICacheMiss_count + 1;
+   end
 
-   assign DCacheReq = DUT.mem_to_regM|DUT.mem_wrM;
+   assign DCacheReq = (DUT.mem_to_regM | DUT.mem_wrM) & ~DUT.stallE;
    // Signal indicating a valid instruction data read or write request to cache
 
-   assign DCacheHit = ~DUT.d_fsm_busy;
-   // Signal indicating a valid data cache hit
-
+   always @(negedge DUT.d_fsm_busy) begin
+	if (rst_n)
+	DCacheMiss_count = DCacheMiss_count + 1;
+   	
+   end
+  
+   
 
    /* Add anything else you want here */
 
