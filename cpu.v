@@ -6,7 +6,6 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
  	wire[15:0] instr_out;
 	wire[15:0] pc_curr;
 	wire[15:0] pc_next;
-	wire exmem_br;
 	wire [2:0] ccode;
 	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
 	wire [7:0] llb_lhb_offset;
@@ -20,6 +19,50 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire prempt_hlt;		// hlt when it arrives directly from imemory
 
+	wire  sel;				// 1 for icache, 0 for dcache. Controls signals that go to main mem
+	//interface with cache
+	wire idata_valid,ddata_valid,data_valid;
+	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
+	wire [15:0] data_out, exmem_ma, exmem_ad;
+	wire [15:0] data_in;
+	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
+	// 									module sends request to memory
+
+	wire mem_access_wen, mem_access_en;
+	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
+	wire icache_read_req,dcache_read_req;
+
+
+	assign sel = (i_cache_fsm_busy) ? 1'b1:
+				 1'b0;
+
+	assign mem_access_addr = (sel) ? i_mem_access_addr:
+							 d_mem_access_addr;
+
+	assign mem_access_en =  (sel) ? icache_read_req:
+							dcache_read_req|d_cache_write;
+
+	assign mem_access_wen = (sel) ? i_cache_write:
+							d_cache_write;
+
+	assign ddata_valid = (sel) ? 1'b0:
+						 data_valid;
+
+	assign idata_valid = (sel) ? data_valid:
+						 1'b0;
+
+	assign data_in = (sel) ? 16'b0:
+					  exmem_ad;
+
+	assign n_d_cache_fsm_busy = ~(d_cache_fsm_busy);
+
+	assign n_i_cache_fsm_busy = ~(i_cache_fsm_busy);
+
+	memory4c Main_Mem(.data_out(data_out), .data_in(data_in),
+										.addr(mem_access_addr),.enable(mem_access_en),
+										.wr(mem_access_wen), .clk(clk),
+										.rst(rst), .data_valid(data_valid));
+
 
 	/*Hazard Unit Wires*/
 	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
@@ -28,23 +71,41 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [15:0] pc_mux_o, exmem_pc_next;
 	// preemptive halt needs to stop the instruction memory queue at read
-	assign prempt_hlt = &instr_out[15:12];
+	// preemptive halt cannot trust instr_out while cache fsm is busy
+	assign prempt_hlt = i_cache_fsm_busy ? 1'b0 : &instr_out[15:12];
 	// if we get a branch from exmem, give pc_next the branched value
 	// elseif hlt is asserted, stick the PC at its original value
 	// else, increment
-	assign pc_mux_o = exmem_br ? exmem_pc_next :
-													prempt_hlt ? pc_curr : pc_add_o;
+	wire fsm_busy;
+	assign fsm_busy = d_cache_fsm_busy | i_cache_fsm_busy;
+	wire branch;
+	wire exmem_br;
+	assign pc_mux_o = exmem_br ? pc_next :
+						prempt_hlt ? pc_curr :
+						fsm_busy ? pc_curr : pc_add_o;
 	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc),
 										.ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr),
 										.Bitline2());
 
 	assign pc_out = pc_curr;
-	imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
+	/*
+		imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
 											.enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
+											*/
+
+
+	iCache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(idata_valid),
+				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
+				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out),
+				  .read_req(icache_read_req));
+
+
 
 	wire [15:0] ifid_pc, ifid_instr;
-
-	if_id IFID (.clk(clk), .rst(rst), .hzrd(stall_n), .branch(exmem_br),
+	wire if_id_stall, if_id_rst;	//IF_ID_RST will be used to insert No Op into pipeline
+	assign if_id_stall = stall_n | n_d_cache_fsm_busy;
+	assign if_id_rst = rst | i_cache_fsm_busy;
+	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(branch),
 									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
 									.instr_o(ifid_instr));
 
@@ -93,7 +154,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
 								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
 								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
-								.hzrd(1'b1), .clk(clk), .rst(rst), .branch(exmem_br),
+								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(branch),
 								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
 								.imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs),
 								.rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op),
@@ -105,13 +166,12 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 									.memwb_rd(memwb_rd), .idex_rs(idex_rs), .idex_rt(idex_rt),
 									.fwdA(alu_mux_a), .fwdB(alu_mux_b));
 
-	wire branch;
 	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off),
 											.op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next),
 											.Branch(branch));
 
 	// ALU inputs
-	wire [15:0] alu_in_a, alu_in_b, memwb_ad, exmem_ad, memwb_fwd_data;
+	wire [15:0] alu_in_a, alu_in_b, memwb_ad, memwb_fwd_data;
 	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
 												alu_mux_a == 2'b01 ? memwb_fwd_data :
 												alu_mux_a == 2'b10 ? exmem_ad : exmem_ad;
@@ -129,34 +189,44 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 
 	wire [2:0] alu_flag_wrt_en;
 	// if it's a mem write, RED or PADDSB, don't write to zero reg
-	assign alu_flag_wrt_en[0] = idex_op[3] | (idex_op[2:0] == 3'b111) |
-	 															(idex_op[2:0] == 3'b010) ? 1'b0 : 1'b1;
+	assign alu_flag_wrt_en[0] = rd == 4'b0 ? 1'b0 : (idex_op == `ADD) | (idex_op == `SUB) | (idex_op == `XOR) |
+													(idex_op == `SLL) | (idex_op == `SRA) | (idex_op == `ROR);
 
-  assign alu_flag_wrt_en[2:1] = (idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
+	assign alu_flag_wrt_en[2:1] = rd == 4'b0 ? 1'b0 :
+											(idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
 
 	flag_reg FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
 												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
 												.Bitline1(FLAG_o), .Bitline2());
 
-	wire [15:0] exmem_ma, exmem_pc_curr, exmem_imm;
+	wire [15:0] exmem_pc_curr, exmem_imm;
 	wire [3:0] exmem_rs, exmem_rt;
 
 	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data),
 										.pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm),
 										.rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd),
-										.op_i(idex_op), .hzrd(1'b1), .clk(clk), .rst(rst),
+										.op_i(idex_op), .hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst),
 										.branch(branch), .mem_addr_o(exmem_ma),
 										.alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr),
 										.pc_next_o(exmem_pc_next), .imm_o(exmem_imm),
 										.rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd),
 										.op_o(exmem_op), .br_o(exmem_br));
-
+										
 	wire [15:0] mem_out;
 	wire mem_en, mem_wr;
 	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);
 	assign mem_wr = exmem_op == `SW;
+	/*
 	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
 											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
+											*/
+	dCache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
+				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
+				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
+				  .read_req(dcache_read_req), .mem_en(mem_en), .ifsm_busy(i_cache_fsm_busy),
+				  .reg_in(data_in));
+
+
 
 	wire [15:0] memwb_md, memwb_pc, memwb_imm;
 	wire [3:0] memwb_rs, memwb_rt;
@@ -165,7 +235,7 @@ module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad),
 									.pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs),
 									.rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op),
-									.hzrd(1'b1), .clk(clk), .rst(rst), .mem_data_o(memwb_md),
+									.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .mem_data_o(memwb_md),
 									.alu_data_o(memwb_ad), .pc_o(memwb_pc), .imm_o(memwb_imm),
 									.rs_o(memwb_rs), .rt_o(memwb_rt), .rd_o(memwb_rd),
 									.op_o(memwb_op));

@@ -23,19 +23,19 @@ module alu_compute(InputA, InputB, Offset, Shift_Imm, Opcode, OutputA, OutputB, 
 	wire [15:0] paddsb_o;
 	paddsb PADDSB (InputA, InputB, paddsb_o);
 
-	wire [15:0] mem_addr, rs_even, imm_shift;
+	wire [15:0] rs_even, imm_shift;
 	assign rs_even = InputA & 16'b1111111111111110;
 	assign imm_shift = Offset << 1;
 	add_16b MEMADD (.a(rs_even), .b(imm_shift), .cin(1'b0), .s(OutputA), .cout());
 
-	wire [15:0] LLB, LHB, LXX_o;
+	wire [15:0] LLB, LHB;
 	assign LLB = {InputA[15:8], Offset[7:0]};
 	assign LHB = {Offset[7:0], InputA[7:0]};
 
 	// DETERMINES WHICH OPERATION PASSES AS AN OUTPUT
 	//////////////////////////////////////////////////////////////
 	reg [15:0] OutputB_im;
-	always @(Opcode, addsub_o, red_o, xor_o, shift_o, paddsb_o) begin
+	always @* begin
 		casez (Opcode)
 			`SW 			: OutputB_im = InputB;
 			`LHB 			: OutputB_im = LHB;
