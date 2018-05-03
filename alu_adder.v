@@ -1,5 +1,3 @@
-`include "add_16b.v"
-
 module alu_adder(mode, A, B, S, N, V, Z);
 	input mode;
 	input [15:0] A, B;
