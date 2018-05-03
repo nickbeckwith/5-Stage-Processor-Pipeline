@@ -1,5 +1,3 @@
-`include "dff.v"
-
 module PC_register(clk, rst, wen, d, q);
 	input
 		clk,			// clk

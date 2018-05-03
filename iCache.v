@@ -1,8 +1,4 @@
 /*
-"I believe the only difference between Icache and Dcache is how the interact with pipeline (no-op vs. stall).
-Also, the module interface may need to be changed in order to handle misses correctly and write policy correctly" - Justin
-
-
 Direct Mapped Cache
 
 Write Through and Write Allocate
@@ -23,20 +19,15 @@ MetaDataArray DataOut:
 	DataOut[7] = Valid Bit of block residing in corresponding DataArray Location
 	DataOut[4:0] = Tag of block residing in corresponding DataArray Location
 */
-`include "cache_fill_FSM.v"
-`include "MetaDataArray.v"
-`include "DataArray.v"
-module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
+module iCache(clk, rst, mem_data_vld, read_req, mem_data, addr_in,
 									fsm_busy, wrt_mem, miss_addr, data_out);
 	input
 		clk,							//Clock Signal
 		rst,							//Reset Signal
-		wrt_cmd, 					//High if processor wants to write
-		mem_data_valid;		// active high indicates valid data returning on memory bus
+		mem_data_vld;		// active high indicates valid data returning on memory bus
 	input [15:0]
 		mem_data, 				//Data to write to Cache
 		addr_in;					//Address to read/write from
-
 	output
 		read_req,					// Should control the enable signal if there's no write anywhere
 		fsm_busy,					// asserted while FSM is busy handling the miss
@@ -44,8 +35,8 @@ module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	output [15:0]				// (can be used as pipeline stall signal)
 		miss_addr, 				//Address that should be attached to main memory
 		data_out;					//Data Read from cache
-	
-	wire [15:0] cache_address;
+
+	wire [15:0] cache_addr;
 	wire wrt_tag;
 	wire wrt_hit;
 	wire hit;						//set if there's a hit. Cleared if no hit.
@@ -56,9 +47,9 @@ module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	// decode address
 	// using address from FSM because it's equiv to addr_in unless there's a miss
 	// if there's a miss, we want to reference the correct offset as it counts from 0 to __
-	assign tag = cache_address[15:11];
-	assign index = cache_address[10:4];
-	assign offset = cache_address[3:1];
+	assign tag = cache_addr[15:11];
+	assign index = cache_addr[10:4];
+	assign offset = cache_addr[3:1];
 
 	// decode index for blockenable
 	wire [127:0] block_en;
@@ -77,12 +68,12 @@ module iCache(clk, rst, wrt_cmd, mem_data_valid, read_req, mem_data, addr_in,
 	assign hit = wrt_tag ? 1'b0 : meta_data[7] & (meta_data[4:0] == tag);
 
 	// fsm
-	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(wrt_cmd), .miss_detected(~hit),
-											.memory_data_valid(mem_data_valid), .read_req(read_req),
-											.wrt_mem(wrt_mem), .miss_address(addr_in),
+	cache_fill_FSM FSM(.clk(clk), .rst(rst), .wrt(1'b0), .miss_detected(~hit),
+											.memory_data_vld(mem_data_vld), .read_req(read_req),
+											.wrt_mem(wrt_mem), .miss_addr(addr_in),
 											.memory_data(mem_data), .fsm_busy(fsm_busy),
 											.write_data_array(wrt_hit), .write_tag_array(wrt_tag),
-											.memory_address(miss_addr), .cache_address(cache_address),
+											.memory_address(miss_addr), .cache_addr(cache_addr),
 											.pause(1'b0));
 
 	// Creation of cache

@@ -1,250 +1,451 @@
+// Notes
+// IATS: is annihilated this stage. Will not continue to pipeline register
+// this usually means we need to process it this time instead of piping it.
+
 `include "cpu.vh"
 
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
-	wire rst;
-	assign rst = ~(rst_n);
- 	wire[15:0] instr_out;
-	wire[15:0] pc_curr;
-	wire[15:0] pc_next;
-	wire [2:0] ccode;
-	wire [3:0] opcode, rd, rs, rs_mux_o, rt, imm;
-	wire [7:0] llb_lhb_offset;
-	wire [8:0] br_offset;
-	wire [15:0] reg_read_val_1, reg_read_val_2, dest_data;
-	wire [2:0] FLAG_o;
-	wire [15:0] imm_sign_ext, lb_hb_off_ext;
-	wire [15:0] pc_add_o;
+// we active high rst in the core
+wire rst;
+assign rst = ~rst_n;
+  //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////Hazard Unit/////////////////////////////////
+  ///////////////// wires for HZRD//////////////////////////
+  wire [1:0]
+   fwd_B_selE,
+   fwd_A_selE,
+   fwdD;
+  wire
+   stallF,
+   stallD,
+   stallE,
+   flushD,
+   branch_matchD,     // cond match and branch
+   reg_wrenE,
+   mem_to_regE,
+   reg_wrenM,
+   i_fsm_busy,
+   d_fsm_busy,
+   reg_wrenW,
+   mem_to_regM;
+  wire [3:0]
+   rdD,
+   rsD,
+   rtD,
+   dst_regW,
+   rsE,
+   rtE,                   // IATS
+   dst_regE,              // either rt or rd
+   dst_regM;      // destination register name still
 
-	wire [3:0] memwb_op, idex_op;
+  hazard HZRD (
+    .branch_matchD(branch_matchD),
+    .i_fsm_busy(i_fsm_busy),
+    .d_fsm_busy(d_fsm_busy),
+    .mem_to_regE(mem_to_regE),
+    .mem_to_regM(mem_to_regM),
+    .reg_wrenE(reg_wrenE),
+    .reg_wrenM(reg_wrenM),
+    .reg_wrenW(reg_wrenW),
+    .dst_regE(dst_regE),
+    .dst_regM(dst_regM),
+    .dst_regW(dst_regW),
+    .rsD(rsD),
+    .rtD(rtD),
+    .rsE(rsE),
+    .rtE(rtE),
+    .stallF(stallF),
+    .stallD(stallD),
+    .stallE(stallE),
+    .flushD(flushD),
+    .forwardD(fwdD),
+    .forward_A_selE(fwd_A_selE),
+    .forward_B_selE(fwd_B_selE)
+  );
+  //////////////////////////////Hazard Unit/////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
 
-	wire prempt_hlt;		// hlt when it arrives directly from imemory
+  //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////// F ///////////////////////////////////////
+  wire
+   pc_en,                // PC Write Enable. From hzd. AKA StallF
+   haltF,                 // halt signal makes pc_nxt = pc_curr
+   vldF;                 // valid bit for noops
+  wire [15:0]
+   pc_curr,              // PC value that comes from pc reg
+   pc_nxt,               // PC value loaded into pc reg
+   pc_plus_2F,           // PC value plus 2
+   instrF,               // instruction out from iCache
+   main_mem_outM,        // main mem out
+   branch_pcD;           // IATS      Next pc if there's a branch
 
-	wire  sel;				// 1 for icache, 0 for dcache. Controls signals that go to main mem
-	//interface with cache
-	wire idata_valid,ddata_valid,data_valid;
-	wire i_cache_fsm_busy, i_cache_write,d_cache_fsm_busy, d_cache_write;
-	wire [15:0] data_out, exmem_ma, exmem_ad;
-	wire [15:0] data_in;
-	//mem_access_type - 0 for instruction, 1 for data - depends on which cache
-	// 									module sends request to memory
+  // Determine next PC depending on if there's a branch
+  // If there's a halt, branch takes priority
+  assign pc_nxt =
+                  branch_matchD ? branch_pcD :
+                  haltF ? pc_curr : pc_plus_2F;
 
-	wire mem_access_wen, mem_access_en;
-	wire[15:0] mem_access_addr,i_mem_access_addr,d_mem_access_addr;
-	wire icache_read_req,dcache_read_req;
+  assign pc_en = ~(stallF);
+  PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
+  /* the only valid instructions are ones that come from
+  instrF. Clearing an instruction creates an instructions
+  of itself but isn't valid. */
+  assign vldF = 1'b1;
+  assign pc_out = pc_curr;           // readability
+  assign haltF = &instrF[15:12];     // find halt value
+
+  add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
+
+  //Pipeline Time
+  wire [33:0] if_id_in, if_id_out;
+  assign if_id_in = {
+      vldF,
+      haltF,
+      instrF,
+      pc_plus_2F
+  };
+
+  /////////////////////////////// IF ///////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
+   // ID/ED pipelineregisteer
+   pipeline_reg #(34) if_id(
+      .clk(clk),
+      .rst(rst),
+      .clr(flushD),	   // branch_match | i_fsm_busy
+      .wren(~stallD),	// StallD
+      .d(if_id_in),
+      .q(if_id_out)
+   );
+  //////////////////////////////////////////////////////////////////////////
+  /////////////////////////////// D ////////////////////////////////////////
+  // pipeline sigs and more
+  wire
+      vldD,
+      haltD;
+  wire [2:0]
+      b_codeD,               // IATS     also works for B instruction
+      flag_regE;                  // flag register output
+  wire [3:0]
+      opcodeD,
+      opcodeE;               // IATS
+  wire [8:0]
+      b_offD;                // IATS
+  wire [15:0]
+      instrD,                 // IATS
+      immD,                   // Could be shift or mem offset.
+      alu_outE,               // output of ALU
+      alu_outM,               // this can also be an address
+      pc_plus_2D;
+
+   //Assign Pipeline Values
+   assign {
+      vldD,
+      haltD,
+      instrD,
+      pc_plus_2D
+   } = if_id_out;
+
+   // Control unit and signals
+   wire
+      reg_wrenD,            // write permissions to register
+      mem_to_regD,          // memory read to register
+      mem_wrD,              // memory write
+      alu_srcD,             // imm or register 2
+      dst_reg_selD,         // IATS    write to RT(0) or RD(1)
+      branchD;              // IATS    is this a branch operation
+   control_unit ControlUnit(
+      .opcode(opcodeD),
+      .vld(vldD),
+      .reg_wren(reg_wrenD),
+      .mem_to_reg(mem_to_regD),
+      .mem_wr(mem_wrD),
+      .alu_src(alu_srcD),
+      .dst_reg_sel(dst_reg_selD),
+      .branch(branchD)
+   );
+
+   // instantiate register and signals needed possibly from WB
+   wire [15:0]
+      src_data_1D,
+      src_data_2D,
+      dst_reg_dataW;
+   registerfile register(
+      .clk(clk),
+      .rst(rst),
+      .SrcReg1(rsD),
+      .SrcReg2(rtD),
+      .DstReg(dst_regW),
+      .WriteReg(reg_wrenW),
+      .DstData(dst_reg_dataW),
+      .SrcData1(src_data_1D),
+      .SrcData2(src_data_2D));
+
+   // decode instruction
+   assign opcodeD = instrD[15:12];
+   assign rdD = instrD[11:8];
+   assign rsD = (opcodeD == `LHB) | (opcodeD == `LLB) ? instrD[11:8] : instrD[7:4];
+   assign rtD = opcodeD[3] ? instrD[11:8] : instrD[3:0];
+   // Remember to reference only the first 4 LSB bits if you want shift amount
+   assign immD = opcodeD[1] ?
+            {{8{instrD[7]}}, instrD[7:0]} : {{12{1'b0}}, instrD[3:0]};
+   assign b_codeD = instrD[11:9];
+   assign b_offD = instrD[8:0];
+
+   // B and Br PC Cacluations and choosing one to send to PC.
+   wire [15:0]
+      b_off_extD,            // IATS      sign extended and shifted
+      b_pcD,                 // IATS      = PC + 2 + (b_offD << 1). assumes br
+      br_pcD;                // IATS      = $(RS)
+
+   // Signals meant for checking if branch should be taken
+   wire
+      cond_passD;              // IATS 1 if the flag reg meets the br conditions
+   flag_check Flag_Check(.C(b_codeD), .flag(flag_regE), .cond_passD(cond_passD));
+
+   // branch_matchD determines if branching will occur
+   assign branch_matchD = branchD & cond_passD;
+
+   // create br_off_ext and br_pc as above
+   assign b_off_extD = {{7{b_offD[8]}}, b_offD} << 1;
+   add_16b br_pc(.a(b_off_extD), .b(pc_plus_2D), .cin(1'b0), .s(b_pcD), .cout());
+
+   // For readability, want to get br_pc as well
+   // src_data_1D is a reg value. Reg values need to be forwarded
+   assign br_pcD =
+                     fwdD == 2'b00 ? src_data_1D :
+                     fwdD == 2'b01 ? alu_outE :
+                     fwdD == 2'b10 ? alu_outM : dst_reg_dataW;
+
+   // choose between which branch
+   // opcode[0] == 1 implies BR, otherwise B
+   assign branch_pcD = opcodeD[0] ? br_pcD : b_pcD;
+
+   //Pipeline Time
+   wire [75:0] id_ex_in, id_ex_out;
+   assign id_ex_in = {
+      vldD,
+      haltD,
+      reg_wrenD,
+      mem_to_regD,
+      mem_wrD,
+      opcodeD,
+      alu_srcD,
+      dst_reg_selD,
+      (opcodeD == `PCS) ? pc_plus_2D : src_data_1D,   // in case of PCS instruction
+      src_data_2D,                                    // we want to get pc+2 into the
+      rdD,                                            // reg wr data path
+      rsD,
+      rtD,
+      immD
+   };
+   /////////////////////////////// D ////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////
+   // ID/EX pipelineregisteer
+   pipeline_reg #(76) id_ex(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),
+      .wren(~stallE),      // only occurs from d_fsm_busy
+      .d(id_ex_in),
+      .q(id_ex_out));
+   //////////////////////////////////////////////////////////////////////////
+   /////////////////////////////// E ////////////////////////////////////////
+   // sigs from the pipeline
+   wire
+    vldE,
+    haltE;
+   wire [3:0]
+    rdE;                   // IATS
+   wire [15:0]
+    src_data_1E,           		// values from register
+	src_data_2E,
+    immE;                  // IATS
+   // control signals that may also be pipelined
+   wire
+      mem_wrE,
+      alu_srcE,            // IATS
+      dst_reg_selE;        // IATS
+
+   //Assign values from pipeline
+   assign {
+      vldE,
+      haltE,
+      reg_wrenE,
+      mem_to_regE,
+      mem_wrE,
+      opcodeE,
+      alu_srcE,
+      dst_reg_selE,
+      src_data_1E,
+      src_data_2E,
+      rdE,
+      rsE,
+      rtE,
+      immE
+   } = id_ex_out;
+
+   // choose between rt and rd depending on ALU or mem operation
+   assign dst_regE = dst_reg_selE ? rdE : rtE;
+
+   // ALU input selection and output. Forwarded values here
+   wire [15:0]
+      fwd_AE,        // IATS     will be renamed as it goes to ALU
+      fwd_BE,        // IATS     renamed as it goes to pipeline
+      src_AE,        // IATS     input to ALU
+      src_BE,        // IATS     input to ALU
+      data_inE;      // What will be written to memory
+
+   assign fwd_AE = fwd_A_selE == 2'b10 ? dst_reg_dataW :
+                   fwd_A_selE == 2'b01 ? alu_outM :
+                   fwd_A_selE == 2'b00 ? src_data_1E : 16'hXXXX;
+
+   assign fwd_BE = fwd_B_selE == 2'b10 ? dst_reg_dataW :
+                   fwd_B_selE == 2'b01 ? alu_outM :
+                   fwd_B_selE == 2'b00 ? src_data_2E : 16'hXXXX;
+
+   assign data_inE = fwd_BE;                    // requested data to wr to mem
+   assign src_AE = fwd_AE;
+   assign src_BE = alu_srcE ? immE : fwd_BE;    // selects imm or reg values
+
+   // Create alu and flag regs
+   // I think the flag register would be happier outside of ALU.
+	wire [2:0]
+		flag_wrt_en,	// whether this is a flag updating operation.
+		ALU_flagE;		// Flag straight from ALU don't use this to branch check
+
+   alu_compute alu(
+      .input_A(src_AE),
+      .input_B(src_BE),
+      .opcode(opcodeE),
+      .vld(vldE),
+      .out(alu_outE),
+      .flag(ALU_flagE));
+
+	// if it's non arithmetic op, RED or paddsb don't write to zero reg
+	assign flag_wrt_en[0] = ~(opcodeE[3] | (opcodeE == `RED) | (opcodeE == `PADDSB));
+	assign flag_wrt_en[2:1] = (opcodeE == `ADD) | (opcodeE == `SUB);
+	flag_reg flag_reg(
+		.clk(clk),
+		.rst(rst),
+		.d(ALU_flagE),
+		.wrt_en(flag_wrt_en & {vldE, vldE, vldE}),
+		.q(flag_regE)
+	);
+
+   //Pipeline Time
+   wire [40:0] ex_mem_in, ex_mem_out;
+   assign ex_mem_in = {
+      vldE,
+      haltE,
+      reg_wrenE,
+      mem_to_regE,
+      mem_wrE,
+      dst_regE,
+      alu_outE,
+      data_inE
+   };
+   /////////////////////////////// E ////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////
+   // EX/MEM pipeline registeer
+   pipeline_reg #(41) ex_mem(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),	// VldE
+      .wren(~stallE),	// stallE is caused from data cache miss
+      .d(ex_mem_in),
+      .q(ex_mem_out));
+   //////////////////////////////////////////////////////////////////////////
+   /////////////////////////////// M ////////////////////////////////////////
+   // pipeline values coming in
+   wire
+      vldM,
+      haltM,
+      mem_wrM;       // IATS
+   wire [15:0]
+      data_inM;      // IATS data to data memory
+
+   //Assign values from pipeline
+   assign {
+      vldM,
+      haltM,
+      reg_wrenM,
+      mem_to_regM,
+      mem_wrM,
+      dst_regM,
+      alu_outM,
+      data_inM
+   } = ex_mem_out;
+
+   // pipeline time
+   wire [39:0] mem_wb_in, mem_wb_out;
+   assign mem_wb_in = {
+      vldM,
+      haltM,
+      reg_wrenM,
+      mem_to_regM,
+      dst_regM,
+      alu_outM,
+      main_mem_outM
+   };
+   /////////////////////////////// M ////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////
+   // Mem/WB pipeline register
+   pipeline_reg #(40) mem_wb( // 55 comes from the size of concatanation
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),       // VldM
+      .wren(1'b1),      // Always High, No Data Hzrds to worry about
+      .d(mem_wb_in),
+      .q(mem_wb_out));
+   //////////////////////////////////////////////////////////////////////////
+   /////////////////////////////// W ////////////////////////////////////////
+   // pipeline and assigning
+   wire
+      vldW,
+      haltW,
+      mem_to_regW;   // IATS
+   wire [15:0]
+      main_mem_outW, // IATS
+      alu_outW;
+   assign {          // remember to change these to W when copying over.
+         vldW,
+         haltW,
+         reg_wrenW,
+         mem_to_regW,
+         dst_regW,
+         alu_outW,
+         main_mem_outW
+      } = mem_wb_out;
+
+   // choose between memory and alu out
+   assign dst_reg_dataW = mem_to_regW ? main_mem_outW : alu_outW;
+   // Need to tell test bench we halted now
+   assign hlt = haltW;
+   /////////////////////////////// W ////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////
+
+   //////////////////////////////////////////////////////////////////////////
+   /////////////////////////// mem module ///////////////////////////////////
+   memory memory(
+      .clk(clk),
+      .rst(rst),
+      .d_wrt_en(mem_wrM),
+      .data_in(data_inM),
+      .i_addr(pc_curr),
+      .d_addr(alu_outM),
+      .i_fsm_busy(i_fsm_busy),
+      .d_fsm_busy(d_fsm_busy),
+      .d_mem_en(mem_to_regM | mem_wrM),
+      .instr_out(instrF),
+      .data_out(main_mem_outM));
+
+	// REMOVE THIS IN FINAL COMPLIATION. JUST FOR KEEPING TRACK OF OPCODE
+reg [3:0] opcodeM, opcodeW;
+always @(posedge clk) begin
+	if (~stallE)
+		opcodeM <= opcodeE;
+	opcodeW <= opcodeM;
+end
 
 
-	assign sel = (i_cache_fsm_busy) ? 1'b1:
-				 1'b0;
-
-	assign mem_access_addr = (sel) ? i_mem_access_addr:
-							 d_mem_access_addr;
-
-	assign mem_access_en =  (sel) ? icache_read_req:
-							dcache_read_req|d_cache_write;
-
-	assign mem_access_wen = (sel) ? i_cache_write:
-							d_cache_write;
-
-	assign ddata_valid = (sel) ? 1'b0:
-						 data_valid;
-
-	assign idata_valid = (sel) ? data_valid:
-						 1'b0;
-
-	assign data_in = (sel) ? 16'b0:
-					  exmem_ad;
-
-	assign n_d_cache_fsm_busy = ~(d_cache_fsm_busy);
-
-	assign n_i_cache_fsm_busy = ~(i_cache_fsm_busy);
-
-	memory4c Main_Mem(.data_out(data_out), .data_in(data_in),
-										.addr(mem_access_addr),.enable(mem_access_en),
-										.wr(mem_access_wen), .clk(clk),
-										.rst(rst), .data_valid(data_valid));
-
-
-	/*Hazard Unit Wires*/
-	wire if_ex_memread, stall_n, write_pc, write_if_id_reg;
-
-	add_16b PC_ADD (.a(pc_curr), .b(16'b0000000000000010), .cin(1'b0), .s(pc_add_o), .cout());
-
-	wire [15:0] pc_mux_o, exmem_pc_next;
-	// preemptive halt needs to stop the instruction memory queue at read
-	// preemptive halt cannot trust instr_out while cache fsm is busy
-	assign prempt_hlt = i_cache_fsm_busy ? 1'b0 : &instr_out[15:12];
-	// if we get a branch from exmem, give pc_next the branched value
-	// elseif hlt is asserted, stick the PC at its original value
-	// else, increment
-	wire fsm_busy;
-	assign fsm_busy = d_cache_fsm_busy | i_cache_fsm_busy;
-	wire branch;
-	wire exmem_br;
-	assign pc_mux_o = exmem_br ? pc_next :
-						prempt_hlt ? pc_curr :
-						fsm_busy ? pc_curr : pc_add_o;
-	PC_register PC (.clk(clk), .rst(rst), .D(pc_mux_o), .WriteReg(write_pc),
-										.ReadEnable1(1'b1), .ReadEnable2(1'b0), .Bitline1(pc_curr),
-										.Bitline2());
-
-	assign pc_out = pc_curr;
-	/*
-		imemory Instr_Mem(.data_out(instr_out), .data_in(16'b0), .addr(pc_curr),
-											.enable(1'b1), .wr(1'b0), .clk(clk), .rst(rst));
-											*/
-
-
-	iCache I_Cache(.clk(clk),.rst(rst),.wrt_cmd(1'b0),.mem_data_valid(idata_valid),
-				  .mem_data(data_out),.addr_in(pc_curr),.fsm_busy(i_cache_fsm_busy),
-				  .wrt_mem(i_cache_write),.miss_addr(i_mem_access_addr),.data_out(instr_out),
-				  .read_req(icache_read_req));
-
-
-
-	wire [15:0] ifid_pc, ifid_instr;
-	wire if_id_stall, if_id_rst;	//IF_ID_RST will be used to insert No Op into pipeline
-	assign if_id_stall = stall_n | n_d_cache_fsm_busy;
-	assign if_id_rst = rst | i_cache_fsm_busy;
-	if_id IFID (.clk(clk), .rst(if_id_rst), .hzrd(if_id_stall), .branch(branch),
-									.pc_i(pc_add_o), .instr_i(instr_out), .pc_o(ifid_pc),
-									.instr_o(ifid_instr));
-
-	assign if_ex_memread = idex_op == `LW;
-	wire [3:0] idex_rt;
-	Hazard_Detection HZRD (.IF_EX_MemRead(if_ex_memread),
-													.ID_EX_RegisterRt(idex_rt), .IF_ID_RegisterRs(rs),
-													.IF_ID_RegisterRt(rt), .stall_n(stall_n),
-													.write_pc(write_pc),
-													.write_IF_ID_reg(write_if_id_reg));
-
-	assign opcode = ifid_instr[15:12];
-	assign hlt = memwb_op == `HLT;
-
-	assign rs_mux_o = (opcode == `LHB) | (opcode == `LLB) ? ifid_instr[11:8] : ifid_instr[7:4];
-
-	assign rd = ifid_instr[11:8];
-	assign rs = rs_mux_o;
-	assign rt = opcode[3] ? ifid_instr[11:8] : ifid_instr[3:0];
-	assign imm = ifid_instr[3:0];
-	assign imm_sign_ext = {{12{ifid_instr[3]}}, imm};
-	assign llb_lhb_offset = ifid_instr[7:0];
-	assign lb_hb_off_ext = {{8{llb_lhb_offset[7]}}, llb_lhb_offset};
-	assign ccode = ifid_instr[11:9];
-	assign br_offset = ifid_instr[8:0];
-
-	wire [3:0] rt_o;
-	assign rt_o = (opcode == `LHB) | (opcode == `LLB) ? 4'b0000 : rt;
-
-	wire regWrite;
-	// probably should make this more readable in the future //
-	// assign regWrite = ~(memwb_op[3]) | ~(memwb_op[2]) | (memwb_op[1] & ~(memwb_op[0]));
-	assign regWrite = ~((memwb_op == `SW) | (memwb_op == `B) | (memwb_op == `BR) | (memwb_op == `HLT));
-	wire [3:0] memwb_rd;
-	registerfile rf(.clk(clk), .rst(rst), .SrcReg1(rs), .SrcReg2(rt_o), .DstReg(memwb_rd),
-											.WriteReg(regWrite), .DstData(dest_data), .SrcData1(reg_read_val_1),
-											.SrcData2(reg_read_val_2));
-
-	wire [15:0] idex_rr1, idex_rr2, idex_pc, idex_imm, final_imm;
-	wire [8:0] idex_br_off;
-	wire [3:0] idex_rs, idex_rd;
-	wire [2:0] idex_ccode;
-
-	assign final_imm = opcode[1] ? lb_hb_off_ext : imm_sign_ext;
-
-	id_ex IDEX(.reg_rd_1_i(reg_read_val_1), .reg_rd_2_i(reg_read_val_2),
-								.pc_i(ifid_pc), .imm_i(final_imm), .br_off_i(br_offset),
-								.rs_i(rs), .rt_i(rt), .rd_i(rd), .op_i(opcode), .ccode_i(ccode),
-								.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .branch(branch),
-								.reg_rd_1_o(idex_rr1), .reg_rd_2_o(idex_rr2), .pc_o(idex_pc),
-								.imm_o(idex_imm), .br_off_o(idex_br_off), .rs_o(idex_rs),
-								.rt_o(idex_rt), .rd_o(idex_rd), .op_o(idex_op),
-								.ccode_o(idex_ccode));
-
-	wire [1:0] alu_mux_a, alu_mux_b;
-	wire [3:0] exmem_op, exmem_rd;
-	fwd_unit FWD (.exmem_op(exmem_op), .exmem_rd(exmem_rd), .memwb_op(memwb_op),
-									.memwb_rd(memwb_rd), .idex_rs(idex_rs), .idex_rt(idex_rt),
-									.fwdA(alu_mux_a), .fwdB(alu_mux_b));
-
-	PC_control PCC (.PC_in(idex_pc), .data(idex_rr1), .offset(idex_br_off),
-											.op(idex_op), .C(idex_ccode), .F(FLAG_o), .PC_out(pc_next),
-											.Branch(branch));
-
-	// ALU inputs
-	wire [15:0] alu_in_a, alu_in_b, memwb_ad, memwb_fwd_data;
-	assign alu_in_a = alu_mux_a == 2'b00 ? idex_rr1 :
-												alu_mux_a == 2'b01 ? memwb_fwd_data :
-												alu_mux_a == 2'b10 ? exmem_ad : exmem_ad;
-
-	assign alu_in_b = alu_mux_b == 2'b00 ? idex_rr2 :
-												alu_mux_b == 2'b01 ? memwb_fwd_data :
-												alu_mux_b == 2'b10 ? exmem_ad : exmem_ad;
-
-
-	wire [15:0] mem_addr, alu_data;
-	wire [2:0] alu_flag;
-	alu_compute ALU(.InputA(alu_in_a), .InputB(alu_in_b), .Offset(idex_imm),
-											.Shift_Imm(idex_rt), .Opcode(idex_op), .OutputA(mem_addr),
-											.OutputB(alu_data), .Flag(alu_flag));
-
-	wire [2:0] alu_flag_wrt_en;
-	// if it's a mem write, RED or PADDSB, don't write to zero reg
-	assign alu_flag_wrt_en[0] = rd == 4'b0 ? 1'b0 : (idex_op == `ADD) | (idex_op == `SUB) | (idex_op == `XOR) |
-													(idex_op == `SLL) | (idex_op == `SRA) | (idex_op == `ROR);
-
-	assign alu_flag_wrt_en[2:1] = rd == 4'b0 ? 1'b0 :
-											(idex_op == `ADD) | (idex_op == `SUB) ? 2'b11 : 2'b00;
-
-	flag_reg FLAG (.clk(clk), .rst(rst), .D(alu_flag), .WriteReg(alu_flag_wrt_en),
-												.ReadEnable1(1'b1), .ReadEnable2(1'b0),
-												.Bitline1(FLAG_o), .Bitline2());
-
-	wire [15:0] exmem_pc_curr, exmem_imm;
-	wire [3:0] exmem_rs, exmem_rt;
-
-	ex_mem EXMEM (.mem_addr_i(mem_addr), .alu_data_i(alu_data),
-										.pc_curr_i(idex_pc), .pc_next_i(pc_next), .imm_i(idex_imm),
-										.rs_i(idex_rs), .rt_i(idex_rt), .rd_i(idex_rd),
-										.op_i(idex_op), .hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst),
-										.branch(branch), .mem_addr_o(exmem_ma),
-										.alu_data_o(exmem_ad), .pc_curr_o(exmem_pc_curr),
-										.pc_next_o(exmem_pc_next), .imm_o(exmem_imm),
-										.rs_o(exmem_rs), .rt_o(exmem_rt), .rd_o(exmem_rd),
-										.op_o(exmem_op), .br_o(exmem_br));
-										
-	wire [15:0] mem_out;
-	wire mem_en, mem_wr;
-	assign mem_en = (exmem_op == `LW) | (exmem_op == `SW);
-	assign mem_wr = exmem_op == `SW;
-	/*
-	dmemory Data_Mem (.data_out(mem_out), .data_in(exmem_ad), .addr(exmem_ma),
-											.enable(mem_en), .wr(mem_wr), .clk(clk), .rst(rst));
-											*/
-	dCache D_Cache(.clk(clk),.rst(rst),.wrt_cmd(mem_wr),.mem_data_valid(ddata_valid),
-				  .mem_data(data_out),.addr_in(exmem_ma),.fsm_busy(d_cache_fsm_busy),
-				  .wrt_mem(d_cache_write),.miss_addr(d_mem_access_addr),.data_out(mem_out),
-				  .read_req(dcache_read_req), .mem_en(mem_en), .ifsm_busy(i_cache_fsm_busy),
-				  .reg_in(data_in));
-
-
-
-	wire [15:0] memwb_md, memwb_pc, memwb_imm;
-	wire [3:0] memwb_rs, memwb_rt;
-
-	assign memwb_fwd_data = memwb_op == `LW ? memwb_md : memwb_ad;
-	mem_wb MEMWB (.mem_data_i(mem_out), .alu_data_i(exmem_ad),
-									.pc_i(exmem_pc_curr), .imm_i(exmem_imm), .rs_i(exmem_rs),
-									.rt_i(exmem_rt), .rd_i(exmem_rd), .op_i(exmem_op),
-									.hzrd(n_d_cache_fsm_busy), .clk(clk), .rst(rst), .mem_data_o(memwb_md),
-									.alu_data_o(memwb_ad), .pc_o(memwb_pc), .imm_o(memwb_imm),
-									.rs_o(memwb_rs), .rt_o(memwb_rt), .rd_o(memwb_rd),
-									.op_o(memwb_op));
-
-	wire [15:0] rw_muxA_o;
-	assign rw_muxA_o = memwb_op == `LW ? memwb_md : memwb_ad;
-
-	wire [15:0] rw_muxB_o;
-	assign rw_muxB_o = memwb_op == `PCS ? memwb_pc : rw_muxA_o;
-
-	assign dest_data = rw_muxB_o;
 endmodule
