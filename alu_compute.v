@@ -11,14 +11,14 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	output [15:0]
 		out;
 	output [2:0]
-		flag;				// combinational output
+		flag;				// output from flag register
 
 	// Adder and subtracter is responsible for some arith and mem address calc
 	wire
-		sub;				// signal to subtract.
+		sub;			// signal to subtract.
 	wire [15:0]
 		addsub_o;		// output of adder
-	wire [2:1]
+	wire [2:0]
 		addsub_f;		// output of flags
 	wire [15:0]
 		add_input_A,
@@ -35,7 +35,8 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 		.B(add_input_B),
 		.S(addsub_o),
 		.N(addsub_f[2]),
-		.V(addsub_f[1]));
+		.V(addsub_f[1]),
+		.Z(addsub_f[0]));
 
 	wire [15:0] red_o;
 	RED RED_mod(input_A, input_B, red_o);
@@ -44,14 +45,13 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	assign xor_o = input_A ^ input_B;
 
 	wire [15:0] shift_o;
-	wire shift_imm;
-	assign shift_imm = input_B[3:0];
-	wire [31:0] ror_full;
-	assign ror_full = {data, data} >> shift;
-	// shift computations
-	assign shift_o = opcode[1:0] == 2'b0 ? input_A << shift_imm :
-				 opcode[1:0] == 2'b1 ? input_A >>> shift_imm :
-				 ror_full[15:0];
+	wire shift_f;
+	shifter SHIFT(
+		.Shift_Out(shift_o),
+		.Zero(shift_f),
+		.Shift_In(input_A),
+		.Shift_Val(input_B[3:0]),
+		.Mode(opcode[1:0]));
 
 	wire [15:0] paddsb_o;
 	paddsb PADDSB(input_A, input_B, paddsb_o);

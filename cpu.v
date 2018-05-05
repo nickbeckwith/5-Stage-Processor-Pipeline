@@ -86,12 +86,7 @@ assign rst = ~rst_n;
                   haltF ? pc_curr : pc_plus_2F;
 
   assign pc_en = ~(stallF);
-  always_ff @(posedge clk)
-   if (rst)
-      pc_curr <= 0;
-   else if (pc_en)
-      pc_curr <= pc_nxt;
-
+  PC_register PC(.clk(clk), .rst(rst), .wen(pc_en), .d(pc_nxt), .q(pc_curr));
   /* the only valid instructions are ones that come from
   instrF. Clearing an instruction creates an instructions
   of itself but isn't valid. */
@@ -112,11 +107,15 @@ assign rst = ~rst_n;
 
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  always_ff @(posedge clk)
-   if (rst | clr)              // branch_match | i_fsm_busy
-      if_id_out <= 0;
-   else if (~stallD)
-      if_id_out <= if_id_in;
+   // ID/ED pipelineregisteer
+   pipeline_reg #(34) if_id(
+      .clk(clk),
+      .rst(rst),
+      .clr(flushD),	   // branch_match | i_fsm_busy
+      .wren(~stallD),	// StallD
+      .d(if_id_in),
+      .q(if_id_out)
+   );
   //////////////////////////////////////////////////////////////////////////
   /////////////////////////////// D ////////////////////////////////////////
   // pipeline sigs and more
@@ -242,11 +241,13 @@ assign rst = ~rst_n;
    /////////////////////////////// D ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
    // ID/EX pipelineregisteer
-   always_ff @(posedge clk)
-      if (rst)
-         id_ex_out <= 0;
-      else if (~stallE)
-         id_ex_out <= id_ex_in;
+   pipeline_reg #(76) id_ex(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),
+      .wren(~stallE),      // only occurs from d_fsm_busy
+      .d(id_ex_in),
+      .q(id_ex_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// E ////////////////////////////////////////
    // sigs from the pipeline
@@ -345,11 +346,14 @@ assign rst = ~rst_n;
    };
    /////////////////////////////// E ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
-   always_ff @(posedge clk)
-      if (rst)
-         ex_mem_out <= 0;
-      else if (~stallE)
-         ex_mem_out <= ex_mem_in;
+   // EX/MEM pipeline registeer
+   pipeline_reg #(41) ex_mem(
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),	// VldE
+      .wren(~stallE),	// stallE is caused from data cache miss
+      .d(ex_mem_in),
+      .q(ex_mem_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// M ////////////////////////////////////////
    // pipeline values coming in
@@ -385,11 +389,14 @@ assign rst = ~rst_n;
    };
    /////////////////////////////// M ////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////
-   always_ff @(posedge clk)
-      if (rst)
-         mem_wb_out <= 0;
-      else
-         mem_wb_out <= mem_wb_in;
+   // Mem/WB pipeline register
+   pipeline_reg #(40) mem_wb( // 55 comes from the size of concatanation
+      .clk(clk),
+      .rst(rst),
+      .clr(1'b0),       // VldM
+      .wren(1'b1),      // Always High, No Data Hzrds to worry about
+      .d(mem_wb_in),
+      .q(mem_wb_out));
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// W ////////////////////////////////////////
    // pipeline and assigning
