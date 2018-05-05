@@ -5,8 +5,8 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 	reg [15:0] regmem [0:15];
 
 	// initialize to zero
-	integer i;
 	initial begin
+		integer i;
 		for (i = 0; i < 16; i = i + 1)
 			regmem[i] = 16'b0;
 	end

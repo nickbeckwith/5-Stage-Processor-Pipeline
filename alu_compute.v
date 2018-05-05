@@ -47,7 +47,7 @@ module alu_compute(input_A, input_B, opcode, vld, out, flag);
 	wire shift_imm;
 	assign shift_imm = input_B[3:0];
 	wire [31:0] ror_full;
-	assign ror_full = {input_A, input_A} >> shift_imm;
+	assign ror_full = {data, data} >> shift;
 	// shift computations
 	assign shift_o = opcode[1:0] == 2'b0 ? input_A << shift_imm :
 				 opcode[1:0] == 2'b1 ? input_A >>> shift_imm :
