@@ -2,7 +2,7 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 			input [3:0] DstReg, input WriteReg, input [15:0] DstData,
 			output [15:0] SrcData1, output [15:0] SrcData2);
 
-	reg [15:0] [0:15] regmem;
+	reg [15:0] regmem [0:15];
 
 	// initialize to zero
 	initial begin
@@ -15,7 +15,7 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 	always @(posedge clk)
 		if (WriteReg)
 			regmem[DstReg] <= DstData;
-			
+
 	//Implement Internal Bypassing Somehow
 	// forwarding time
 	// if SrcReg1 == DstReg then set SrcData1 to DstData
