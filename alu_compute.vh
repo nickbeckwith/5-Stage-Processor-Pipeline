@@ -3,7 +3,6 @@
 
 `include "alu_adder.v"
 `include "RED.v"
-`include "shifter.v"
 `include "paddsb.v"
 
 `define ADD     4'b0000

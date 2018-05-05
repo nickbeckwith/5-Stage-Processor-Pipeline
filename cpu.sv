@@ -6,16 +6,16 @@
 
 module cpu(input clk, input rst_n, output hlt, output [15:0] pc_out);
 // we active high rst in the core
-wire rst;
+logic rst;
 assign rst = ~rst_n;
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////Hazard Unit/////////////////////////////////
-  ///////////////// wires for HZRD//////////////////////////
-  wire [1:0]
+  ///////////////// logics for HZRD//////////////////////////
+  logic [1:0]
    fwd_B_selE,
    fwd_A_selE,
    fwdD;
-  wire
+  logic
    stallF,
    stallD,
    stallE,
@@ -28,7 +28,7 @@ assign rst = ~rst_n;
    d_fsm_busy,
    reg_wrenW,
    mem_to_regM;
-  wire [3:0]
+  logic [3:0]
    rdD,
    rsD,
    rtD,
@@ -67,11 +67,11 @@ assign rst = ~rst_n;
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////// F ///////////////////////////////////////
-  wire
+  logic
    pc_en,                // PC Write Enable. From hzd. AKA StallF
    haltF,                 // halt signal makes pc_nxt = pc_curr
    vldF;                 // valid bit for noops
-  wire [15:0]
+  logic [15:0]
    pc_curr,              // PC value that comes from pc reg
    pc_nxt,               // PC value loaded into pc reg
    pc_plus_2F,           // PC value plus 2
@@ -102,7 +102,7 @@ assign rst = ~rst_n;
   add_16b add2(.a(pc_curr), .b(16'd2), .cin(1'b0), .s(pc_plus_2F), .cout());
 
   //Pipeline Time
-  wire [33:0] if_id_in, if_id_out;
+  logic [33:0] if_id_in, if_id_out;
   assign if_id_in = {
       vldF,
       haltF,
@@ -113,25 +113,25 @@ assign rst = ~rst_n;
   /////////////////////////////// IF ///////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   always_ff @(posedge clk)
-   if (rst | clr)              // branch_match | i_fsm_busy
+   if (rst | flushD)              // branch_match | i_fsm_busy
       if_id_out <= 0;
    else if (~stallD)
       if_id_out <= if_id_in;
   //////////////////////////////////////////////////////////////////////////
   /////////////////////////////// D ////////////////////////////////////////
   // pipeline sigs and more
-  wire
+  logic
       vldD,
       haltD;
-  wire [2:0]
+  logic [2:0]
       b_codeD,               // IATS     also works for B instruction
       flag_regE;                  // flag register output
-  wire [3:0]
+  logic [3:0]
       opcodeD,
       opcodeE;               // IATS
-  wire [8:0]
+  logic [8:0]
       b_offD;                // IATS
-  wire [15:0]
+  logic [15:0]
       instrD,                 // IATS
       immD,                   // Could be shift or mem offset.
       alu_outE,               // output of ALU
@@ -147,7 +147,7 @@ assign rst = ~rst_n;
    } = if_id_out;
 
    // Control unit and signals
-   wire
+   logic
       reg_wrenD,            // write permissions to register
       mem_to_regD,          // memory read to register
       mem_wrD,              // memory write
@@ -166,7 +166,7 @@ assign rst = ~rst_n;
    );
 
    // instantiate register and signals needed possibly from WB
-   wire [15:0]
+   logic [15:0]
       src_data_1D,
       src_data_2D,
       dst_reg_dataW;
@@ -193,13 +193,13 @@ assign rst = ~rst_n;
    assign b_offD = instrD[8:0];
 
    // B and Br PC Cacluations and choosing one to send to PC.
-   wire [15:0]
+   logic [15:0]
       b_off_extD,            // IATS      sign extended and shifted
       b_pcD,                 // IATS      = PC + 2 + (b_offD << 1). assumes br
       br_pcD;                // IATS      = $(RS)
 
    // Signals meant for checking if branch should be taken
-   wire
+   logic
       cond_passD;              // IATS 1 if the flag reg meets the br conditions
    flag_check Flag_Check(.C(b_codeD), .flag(flag_regE), .cond_passD(cond_passD));
 
@@ -222,7 +222,7 @@ assign rst = ~rst_n;
    assign branch_pcD = opcodeD[0] ? br_pcD : b_pcD;
 
    //Pipeline Time
-   wire [75:0] id_ex_in, id_ex_out;
+   logic [75:0] id_ex_in, id_ex_out;
    assign id_ex_in = {
       vldD,
       haltD,
@@ -250,17 +250,17 @@ assign rst = ~rst_n;
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// E ////////////////////////////////////////
    // sigs from the pipeline
-   wire
+   logic
     vldE,
     haltE;
-   wire [3:0]
+   logic [3:0]
     rdE;                   // IATS
-   wire [15:0]
+   logic [15:0]
     src_data_1E,           		// values from register
 	src_data_2E,
     immE;                  // IATS
    // control signals that may also be pipelined
-   wire
+   logic
       mem_wrE,
       alu_srcE,            // IATS
       dst_reg_selE;        // IATS
@@ -287,7 +287,7 @@ assign rst = ~rst_n;
    assign dst_regE = dst_reg_selE ? rdE : rtE;
 
    // ALU input selection and output. Forwarded values here
-   wire [15:0]
+   logic [15:0]
       fwd_AE,        // IATS     will be renamed as it goes to ALU
       fwd_BE,        // IATS     renamed as it goes to pipeline
       src_AE,        // IATS     input to ALU
@@ -308,7 +308,7 @@ assign rst = ~rst_n;
 
    // Create alu and flag regs
    // I think the flag register would be happier outside of ALU.
-	wire [2:0]
+	logic [2:0]
 		flag_wrt_en,	// whether this is a flag updating operation.
 		ALU_flagE;		// Flag straight from ALU don't use this to branch check
 
@@ -332,7 +332,7 @@ assign rst = ~rst_n;
 	);
 
    //Pipeline Time
-   wire [40:0] ex_mem_in, ex_mem_out;
+   logic [40:0] ex_mem_in, ex_mem_out;
    assign ex_mem_in = {
       vldE,
       haltE,
@@ -353,11 +353,11 @@ assign rst = ~rst_n;
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// M ////////////////////////////////////////
    // pipeline values coming in
-   wire
+   logic
       vldM,
       haltM,
       mem_wrM;       // IATS
-   wire [15:0]
+   logic [15:0]
       data_inM;      // IATS data to data memory
 
    //Assign values from pipeline
@@ -373,7 +373,7 @@ assign rst = ~rst_n;
    } = ex_mem_out;
 
    // pipeline time
-   wire [39:0] mem_wb_in, mem_wb_out;
+   logic [39:0] mem_wb_in, mem_wb_out;
    assign mem_wb_in = {
       vldM,
       haltM,
@@ -393,11 +393,11 @@ assign rst = ~rst_n;
    //////////////////////////////////////////////////////////////////////////
    /////////////////////////////// W ////////////////////////////////////////
    // pipeline and assigning
-   wire
+   logic
       vldW,
       haltW,
       mem_to_regW;   // IATS
-   wire [15:0]
+   logic [15:0]
       main_mem_outW, // IATS
       alu_outW;
    assign {          // remember to change these to W when copying over.

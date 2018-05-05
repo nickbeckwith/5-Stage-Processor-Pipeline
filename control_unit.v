@@ -1,9 +1,10 @@
 `include "opcodes.vh"
 module control_unit(opcode, vld, reg_wren, mem_to_reg, mem_wr, alu_src, dst_reg_sel,
          branch);
+   input
+      vld;
    input [3:0]
-      opcode,
-      vld;		// Valid bit from register
+      opcode;
    output
       reg_wren,         // Enables writing to register
       mem_to_reg,       // Enables reading from memory and writes to reg

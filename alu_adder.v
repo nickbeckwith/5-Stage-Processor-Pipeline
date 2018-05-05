@@ -2,7 +2,7 @@ module alu_adder(mode, A, B, S, N, V);
 	input mode;
 	input [15:0] A, B;
 	output [15:0] S;
-	output N, V, Z;
+	output N, V;
 
 	wire [15:0] sw;
 	wire cout;

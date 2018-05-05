@@ -1,9 +1,6 @@
 `ifndef _cpu_vh_
 `define _cpu_vh_
 
-`include "add_16b.v"
-`include "PC_register.v"
-`include "pipeline_reg.v"
 `include "hazard.v"
 `include "registerfile.v"
 `include "control_unit.v"
