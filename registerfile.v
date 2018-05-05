@@ -13,8 +13,10 @@ module registerfile (input clk, input rst, input [3:0] SrcReg1, input [3:0] SrcR
 
 	// Mips would have this be negedge but I'm not sure...
 	always @(posedge clk)
-		if (WriteReg)
+		if (WriteReg) begin
+			regmem[4'b0] <= 16'b0;
 			regmem[DstReg] <= DstData;
+		end
 
 	//Implement Internal Bypassing Somehow
 	// forwarding time
